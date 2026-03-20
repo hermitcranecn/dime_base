@@ -52,7 +52,7 @@ export async function createDimeAgent(request: CreateDimeRequest): Promise<DimeS
     }
 
     // Create dime
-    const dime = createDime(request.ownerId, request.name, request.personality);
+    const dime = createDime(request.ownerId, request.personality, request.name);
     return { success: true, data: dime };
   } catch (error: any) {
     return { success: false, error: error.message };

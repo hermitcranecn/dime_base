@@ -5,15 +5,15 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { 
-  createDimeAgent, 
-  getDimeAgent, 
-  chatWithDime, 
+import {
+  createDimeAgent,
+  getDimeAgent,
+  chatWithDime,
   decideWithDime,
   setDimeStatus,
-  listAllDimes,
-  personalityQuestions 
+  listAllDimes
 } from '../agents/service';
+import { personalityQuestions } from '../agents/dime';
 
 const router = Router();
 

@@ -130,19 +130,19 @@ export const personalityQuestions = [
 ];
 
 // Create a new dime
-export function createDime(ownerId: string, name: string, personality: Partial<DimePersonality>): Dime {
+export function createDime(ownerId: string, personality?: Partial<DimePersonality>, name?: string): Dime {
   const dime: Dime = {
     id: uuidv4(),
     ownerId,
     name: name || `${ownerId}_dime`,
     personality: {
-      communicationStyle: personality.communicationStyle || 'casual',
-      detailLevel: personality.detailLevel || 'balanced',
-      decisionStyle: personality.decisionStyle || 'analytical',
-      riskTolerance: personality.riskTolerance || 'medium',
-      socialPreference: personality.socialPreference || 'selective',
-      optimism: personality.optimism || 'realist',
-      interests: personality.interests || []
+      communicationStyle: personality?.communicationStyle || 'casual',
+      detailLevel: personality?.detailLevel || 'balanced',
+      decisionStyle: personality?.decisionStyle || 'analytical',
+      riskTolerance: personality?.riskTolerance || 'medium',
+      socialPreference: personality?.socialPreference || 'selective',
+      optimism: personality?.optimism || 'realist',
+      interests: personality?.interests || []
     },
     decisionBoundary: {
       maxPurchaseAmount: 100,
@@ -260,3 +260,37 @@ export default {
   processDecision,
   personalityQuestions
 };
+
+// Add memory/conversation to dime (for service.ts compatibility)
+export function addMemory(dimeId: string, type: string, data: any): boolean {
+  const dime = dimes.get(dimeId);
+  if (!dime) return false;
+  
+  if (type === 'conversation') {
+    dime.memory.shortTerm.conversations.push({
+      id: uuidv4(),
+      messages: [{
+        id: uuidv4(),
+        sender: data.role === 'user' ? 'owner' : 'dime',
+        content: data.content,
+        timestamp: data.timestamp || new Date()
+      }],
+      timestamp: new Date()
+    });
+    // Keep only last 10 conversations
+    if (dime.memory.shortTerm.conversations.length > 10) {
+      dime.memory.shortTerm.conversations.shift();
+    }
+  }
+  
+  dime.lastActive = new Date();
+  return true;
+}
+
+// List all dimes
+export function listDimes(): Dime[] {
+  return Array.from(dimes.values());
+}
+
+// Alias for processDecision (for service.ts compatibility)
+export const makeDecision = processDecision;
