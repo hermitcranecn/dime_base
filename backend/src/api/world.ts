@@ -137,7 +137,7 @@ router.post('/:playgroundId/enter', (req: Request, res: Response) => {
 
   const cols = pgResult[0].columns;
   const row: any = {};
-  cols.forEach((col, i) => { row[col] = pgResult[0].values[0][i]; });
+  cols.forEach((col: string, i: number) => { row[col] = pgResult[0].values[0][i]; });
 
   // Check capacity
   const countResult = db.exec("SELECT COUNT(*) FROM agent_locations WHERE playground_id = ?", [playgroundId]);

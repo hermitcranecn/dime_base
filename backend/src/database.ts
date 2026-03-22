@@ -4,13 +4,14 @@
  * Persistent storage using sql.js (pure JS SQLite)
  */
 
-import initSqlJs, { Database } from 'sql.js';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const initSqlJs = require('sql.js');
 import * as fs from 'fs';
 import * as path from 'path';
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'dime_base.db');
 
-let db: Database;
+let db: any;
 
 export async function initDatabase(): Promise<void> {
   const SQL = await initSqlJs();
@@ -100,7 +101,7 @@ export function saveDatabase(): void {
   fs.writeFileSync(DB_PATH, buffer);
 }
 
-export function getDb(): Database {
+export function getDb(): any {
   return db;
 }
 
