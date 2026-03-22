@@ -10,6 +10,7 @@ import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 
 import { initWebSocket } from './websocket';
+import { initDatabase } from './database';
 
 dotenv.config();
 
@@ -71,7 +72,8 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// Start server
+// Initialize database and start server
+initDatabase().then(() => {
 httpServer.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
@@ -84,6 +86,10 @@ httpServer.listen(PORT, () => {
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
   `);
+});
+}).catch((err) => {
+  console.error('Failed to initialize database:', err);
+  process.exit(1);
 });
 
 export { app, io, httpServer };

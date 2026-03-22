@@ -1,10 +1,12 @@
 /**
  * dime_base - Agent Management
- * 
+ *
  * Handles dime (digital me) agent creation, personality, memory
+ * Persisted via SQLite
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { getDb, saveDatabase } from '../database';
 
 // Types
 export interface DimePersonality {
@@ -30,7 +32,7 @@ export interface Dime {
 }
 
 export interface DecisionBoundary {
-  maxPurchaseAmount: number;      // in vCoins
+  maxPurchaseAmount: number;
   canJoinGroups: boolean;
   canSharePersonalInfo: boolean;
   escalateAboveAmount: number;
@@ -50,7 +52,7 @@ export interface ShortTermMemory {
 export interface LongTermMemory {
   personalityProfile: any;
   learnedPreferences: any;
-  relationships: Map<string, Relationship>;
+  relationships: Record<string, Relationship>;
 }
 
 export interface Conversation {
@@ -84,11 +86,8 @@ export interface Relationship {
   otherDimeId: string;
   interactionCount: number;
   lastInteraction: Date;
-  trust: number; // 0-100
+  trust: number;
 }
-
-// In-memory store (would be database in production)
-const dimes = new Map<string, Dime>();
 
 // Default personality questionnaire
 export const personalityQuestions = [
@@ -129,10 +128,34 @@ export const personalityQuestions = [
   }
 ];
 
+// Helper: convert DB row to Dime object
+function rowToDime(row: any): Dime {
+  const memory = JSON.parse(row.memory);
+  // Convert relationships back from plain object
+  if (memory.longTerm && memory.longTerm.relationships && !(memory.longTerm.relationships instanceof Map)) {
+    // Keep as plain object (Map doesn't serialize to JSON well)
+  }
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    name: row.name,
+    personality: JSON.parse(row.personality),
+    decisionBoundary: JSON.parse(row.decision_boundary),
+    memory,
+    status: row.status,
+    createdAt: new Date(row.created_at),
+    lastActive: new Date(row.last_active)
+  };
+}
+
 // Create a new dime
 export function createDime(ownerId: string, personality?: Partial<DimePersonality>, name?: string): Dime {
+  const db = getDb();
+  const id = uuidv4();
+  const now = new Date().toISOString();
+
   const dime: Dime = {
-    id: uuidv4(),
+    id,
     ownerId,
     name: name || `${ownerId}_dime`,
     personality: {
@@ -159,61 +182,79 @@ export function createDime(ownerId: string, personality?: Partial<DimePersonalit
       longTerm: {
         personalityProfile: {},
         learnedPreferences: {},
-        relationships: new Map()
+        relationships: {}
       }
     },
     status: 'active',
-    createdAt: new Date(),
-    lastActive: new Date()
+    createdAt: new Date(now),
+    lastActive: new Date(now)
   };
 
-  dimes.set(dime.id, dime);
+  db.run(
+    `INSERT INTO dimes (id, owner_id, name, personality, decision_boundary, memory, status, created_at, last_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, ownerId, dime.name, JSON.stringify(dime.personality), JSON.stringify(dime.decisionBoundary), JSON.stringify(dime.memory), dime.status, now, now]
+  );
+  saveDatabase();
   return dime;
 }
 
 // Get dime by ID
 export function getDime(dimeId: string): Dime | undefined {
-  return dimes.get(dimeId);
+  const db = getDb();
+  const result = db.exec("SELECT * FROM dimes WHERE id = ?", [dimeId]);
+  if (result.length === 0 || result[0].values.length === 0) return undefined;
+
+  const cols = result[0].columns;
+  const vals = result[0].values[0];
+  const row: any = {};
+  cols.forEach((col: string, i: number) => { row[col] = vals[i]; });
+  return rowToDime(row);
 }
 
 // Get dime by owner
 export function getDimeByOwner(ownerId: string): Dime | undefined {
-  for (const dime of dimes.values()) {
-    if (dime.ownerId === ownerId) {
-      return dime;
-    }
-  }
-  return undefined;
+  const db = getDb();
+  const result = db.exec("SELECT * FROM dimes WHERE owner_id = ?", [ownerId]);
+  if (result.length === 0 || result[0].values.length === 0) return undefined;
+
+  const cols = result[0].columns;
+  const vals = result[0].values[0];
+  const row: any = {};
+  cols.forEach((col: string, i: number) => { row[col] = vals[i]; });
+  return rowToDime(row);
 }
 
 // Update dime status
 export function updateDimeStatus(dimeId: string, status: 'active' | 'paused' | 'idle'): boolean {
-  const dime = dimes.get(dimeId);
-  if (dime) {
-    dime.status = status;
-    dime.lastActive = new Date();
-    return true;
-  }
-  return false;
+  const db = getDb();
+  const existing = db.exec("SELECT id FROM dimes WHERE id = ?", [dimeId]);
+  if (existing.length === 0 || existing[0].values.length === 0) return false;
+
+  db.run("UPDATE dimes SET status = ?, last_active = ? WHERE id = ?", [status, new Date().toISOString(), dimeId]);
+  saveDatabase();
+  return true;
 }
 
 // Add conversation to memory
 export function addConversation(dimeId: string, messages: Message[]): boolean {
-  const dime = dimes.get(dimeId);
-  if (dime) {
-    dime.memory.shortTerm.conversations.push({
-      id: uuidv4(),
-      messages,
-      timestamp: new Date()
-    });
-    // Keep only last 10 conversations
-    if (dime.memory.shortTerm.conversations.length > 10) {
-      dime.memory.shortTerm.conversations.shift();
-    }
-    dime.lastActive = new Date();
-    return true;
+  const dime = getDime(dimeId);
+  if (!dime) return false;
+
+  dime.memory.shortTerm.conversations.push({
+    id: uuidv4(),
+    messages,
+    timestamp: new Date()
+  });
+  // Keep only last 10 conversations
+  if (dime.memory.shortTerm.conversations.length > 10) {
+    dime.memory.shortTerm.conversations.shift();
   }
-  return false;
+
+  const db = getDb();
+  db.run("UPDATE dimes SET memory = ?, last_active = ? WHERE id = ?", [JSON.stringify(dime.memory), new Date().toISOString(), dimeId]);
+  saveDatabase();
+  return true;
 }
 
 // Process decision
@@ -230,7 +271,7 @@ export interface DecisionResponse {
 }
 
 export function processDecision(dimeId: string, request: DecisionRequest): DecisionResponse {
-  const dime = dimes.get(dimeId);
+  const dime = getDime(dimeId);
   if (!dime) {
     return {
       decision: '',
@@ -239,9 +280,8 @@ export function processDecision(dimeId: string, request: DecisionRequest): Decis
     };
   }
 
-  // Simple decision logic (would use LLM in production)
-  const shouldEscalate = 
-    request.urgency === 'critical' || 
+  const shouldEscalate =
+    request.urgency === 'critical' ||
     request.urgency === 'high';
 
   return {
@@ -263,9 +303,9 @@ export default {
 
 // Add memory/conversation to dime (for service.ts compatibility)
 export function addMemory(dimeId: string, type: string, data: any): boolean {
-  const dime = dimes.get(dimeId);
+  const dime = getDime(dimeId);
   if (!dime) return false;
-  
+
   if (type === 'conversation') {
     dime.memory.shortTerm.conversations.push({
       id: uuidv4(),
@@ -282,14 +322,25 @@ export function addMemory(dimeId: string, type: string, data: any): boolean {
       dime.memory.shortTerm.conversations.shift();
     }
   }
-  
-  dime.lastActive = new Date();
+
+  const db = getDb();
+  db.run("UPDATE dimes SET memory = ?, last_active = ? WHERE id = ?", [JSON.stringify(dime.memory), new Date().toISOString(), dimeId]);
+  saveDatabase();
   return true;
 }
 
 // List all dimes
 export function listDimes(): Dime[] {
-  return Array.from(dimes.values());
+  const db = getDb();
+  const result = db.exec("SELECT * FROM dimes");
+  if (result.length === 0) return [];
+
+  const cols = result[0].columns;
+  return result[0].values.map((vals: any[]) => {
+    const row: any = {};
+    cols.forEach((col: string, i: number) => { row[col] = vals[i]; });
+    return rowToDime(row);
+  });
 }
 
 // Alias for processDecision (for service.ts compatibility)

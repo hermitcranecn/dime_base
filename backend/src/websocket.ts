@@ -73,7 +73,7 @@ export function initWebSocket(httpServer: HttpServer): SocketIOServer {
     });
 
     // Dime-to-dime communication
-    socket.on('message_to_dime', (data: { toDimeId: string; fromDimeId: string; message: string }) => {
+    socket.on('dime_to_dime', (data: { toDimeId: string; fromDimeId: string; message: string }) => {
       io.to(`dime:${data.toDimeId}`).emit('dime_message', {
         id: uuidv4(),
         fromDimeId: data.fromDimeId,
