@@ -19,8 +19,8 @@ interface Message {
   timestamp: string
 }
 
-// Connect to backend
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+// Connect to backend via relative URL (Vite proxy handles /api -> backend:3000)
+const API_BASE = '/api'
 
 function App() {
   const [socket, setSocket] = useState<any>(null)
@@ -30,10 +30,11 @@ function App() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [view, setView] = useState<'login' | 'chat'>('login')
+  const [error, setError] = useState('')
 
   // Connect socket on mount
   useEffect(() => {
-    const newSocket = io(SOCKET_URL)
+    const newSocket = io(window.location.origin)
     setSocket(newSocket)
 
     newSocket.on('connect', () => {
@@ -55,7 +56,7 @@ function App() {
     
     setLoading(true)
     try {
-      const res = await fetch(`${SOCKET_URL}/api/agents/create`, {
+      const res = await fetch(`${API_BASE}/agents/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ownerId: userId, name: `${userId}_dime` })
@@ -69,7 +70,7 @@ function App() {
         setView('chat')
       } else if (data.data) {
         // Already exists, get it
-        const getRes = await fetch(`${SOCKET_URL}/api/agents/owner/${userId}`)
+        const getRes = await fetch(`${API_BASE}/agents/owner/${userId}`)
         const getData = await getRes.json()
         setDime(getData)
         socket?.auth(userId)
@@ -78,6 +79,7 @@ function App() {
       }
     } catch (err) {
       console.error(err)
+      setError('Failed to connect to backend')
     }
     setLoading(false)
   }
@@ -85,10 +87,10 @@ function App() {
   // Send message
   const sendMessage = async () => {
     if (!input.trim() || !dime) return
-    
+
     const msg = input
     setInput('')
-    
+
     // Add user message
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
@@ -98,13 +100,13 @@ function App() {
     }])
 
     try {
-      const res = await fetch(`${SOCKET_URL}/api/agents/${dime.id}/chat`, {
+      const res = await fetch(`${API_BASE}/agents/${dime.id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msg })
       })
       const data = await res.json()
-      
+
       if (data.response) {
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
@@ -113,8 +115,12 @@ function App() {
           timestamp: new Date().toISOString()
         }])
       }
+      if (data.error) {
+        setError(data.error)
+      }
     } catch (err) {
       console.error(err)
+      setError('Failed to send message')
     }
   }
 
@@ -127,6 +133,7 @@ function App() {
 
       {view === 'login' ? (
         <div className="login">
+          {error && <div className="error">{error}</div>}
           <input
             type="text"
             placeholder="Enter your user ID"
