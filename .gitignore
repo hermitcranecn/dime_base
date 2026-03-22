@@ -1,2 +1,4 @@
 openclaw/
 zeroclaw/
+node_modules/
+.env
