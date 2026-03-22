@@ -14,6 +14,12 @@ const DB_PATH = path.join(__dirname, '..', 'data', 'dime_base.db');
 let db: any;
 
 export async function initDatabase(): Promise<void> {
+  // Ensure data directory exists
+  const dataDir = path.dirname(DB_PATH);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
   const SQL = await initSqlJs();
 
   // Load existing DB file or create new
