@@ -63,7 +63,7 @@ export interface Conversation {
 
 export interface Message {
   id: string;
-  sender: 'owner' | 'dime' | 'other_dime';
+  sender: 'user' | 'owner' | 'dime' | 'other_dime';
   content: string;
   timestamp: Date;
 }
