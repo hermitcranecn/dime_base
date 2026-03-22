@@ -311,7 +311,7 @@ export function addMemory(dimeId: string, type: string, data: any): boolean {
       id: uuidv4(),
       messages: [{
         id: uuidv4(),
-        sender: data.role === 'user' ? 'owner' : 'dime',
+        sender: data.role === 'user' ? 'user' : 'dime',
         content: data.content,
         timestamp: data.timestamp || new Date()
       }],
