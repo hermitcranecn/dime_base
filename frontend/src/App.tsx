@@ -19,7 +19,8 @@ interface Message {
   timestamp: string
 }
 
-// Connect to backend via relative URL (Vite proxy handles /api -> backend:3000)
+// Backend URL - use env var or construct from current origin + port 3000
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || `http://localhost:3000`
 const API_BASE = '/api'
 
 function App() {
@@ -32,9 +33,9 @@ function App() {
   const [view, setView] = useState<'login' | 'chat'>('login')
   const [error, setError] = useState('')
 
-  // Connect socket on mount
+  // Connect socket on mount - use backend URL directly
   useEffect(() => {
-    const newSocket = io(window.location.origin)
+    const newSocket = io(BACKEND_URL)
     setSocket(newSocket)
 
     newSocket.on('connect', () => {
@@ -65,16 +66,16 @@ function App() {
       
       if (data.success) {
         setDime(data.data)
-        socket?.auth(userId)
-        socket?.join_dime(data.data.id)
+        socket?.emit('auth', userId)
+        socket?.emit('join_dime', data.data.id)
         setView('chat')
       } else if (data.data) {
         // Already exists, get it
         const getRes = await fetch(`${API_BASE}/agents/owner/${userId}`)
         const getData = await getRes.json()
         setDime(getData)
-        socket?.auth(userId)
-        socket?.join_dime(getData.id)
+        socket?.emit('auth', userId)
+        socket?.emit('join_dime', getData.id)
         setView('chat')
       }
     } catch (err) {
