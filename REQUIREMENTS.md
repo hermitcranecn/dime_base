@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | 1.2 |
+| **Version** | 1.3 |
 | **Date** | 2026-03-26 |
 | **Status** | Requirements Specification |
 | **Owner** | dime_base Team |
@@ -63,6 +63,7 @@
 | FUT-7 | External IM Integration (Telegram, WeChat) | Medium |
 | FUT-8 | Real Payment Gateway | Medium |
 | FUT-9 | Horizontal Scaling (Redis, K8s) | Medium |
+| FUT-10 | iOS App (Owner-Dime Channel) | High |
 
 ---
 
@@ -74,8 +75,8 @@
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              CLIENT LAYER                                    │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │
-│  │ Web App    │  │ Mobile App  │  │  Wearable   │  │   Earbuds   │      │
-│  │ (React)    │  │  (Future)   │  │  (Future)   │  │  (Future)   │      │
+│  │ Web App    │  │  iOS App   │  │  Wearable   │  │   Earbuds   │      │
+│  │ (React)    │  │  (Future)  │  │  (Future)   │  │  (Future)   │      │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘      │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
@@ -577,8 +578,121 @@ Environment file: `backend/.env`
 - [ ] Horizontal scaling
 - [ ] CDN integration
 
+### Phase 4: Mobile (iOS App)
+- [ ] iOS App development (Swift/SwiftUI)
+- [ ] Push notifications for Dime events
+- [ ] Real-time chat interface
+- [ ] Decision escalation UI
+- [ ] App Store submission
+
 ---
 
-*Document Version: 1.2*
+## 15. iOS App Specification
+
+### 15.1 Overview
+
+The iOS App serves as the primary channel between Owner and Dime, providing a native mobile experience for real-time interaction and management.
+
+### 15.2 Purpose
+
+| Benefit | Description |
+|---------|------------|
+| **Accessibility** | Access Dime from anywhere via mobile device |
+| **Real-time** | Instant notifications for Dime events and decisions |
+| **Native Experience** | Smooth, optimized UI/UX vs web app |
+| **Push Notifications** | Stay informed when Dime needs attention |
+
+### 15.3 Core Features
+
+| Feature | Description | Priority |
+|---------|------------|----------|
+| Chat Interface | Send/receive messages with Dime | Critical |
+| Decision Requests | View and approve/reject escalated decisions | Critical |
+| Dime Status | Monitor Dime activity and location | High |
+| Push Notifications | Alerts for important Dime events | High |
+| Personality Config | Adjust Dime personality settings | Medium |
+| Economy Dashboard | View vCoin balance and transactions | Medium |
+
+### 15.4 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              iOS APP                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐       │
+│   │   Chat View     │    │  Decision View  │    │   Status View   │       │
+│   │                 │    │                 │    │                 │       │
+│   │ • Message list  │    │ • Pending       │    │ • Dime state   │       │
+│   │ • Input field   │    │   requests      │    │ • Location     │       │
+│   │ • Typing ind.   │    │ • Approve/     │    │ • Activity     │       │
+│   │                 │    │   Reject        │    │   log          │       │
+│   └─────────────────┘    └─────────────────┘    └─────────────────┘       │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                     Data Layer (Swift)                               │   │
+│   │                                                                      │   │
+│   │   ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │   │
+│   │   │ REST Client  │    │ WebSocket    │    │ Local Store  │       │   │
+│   │   │ (URLSession) │    │ (Starscream) │    │ (UserDefaults)│       │   │
+│   │   └──────────────┘    └──────────────┘    └──────────────┘       │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                         │
+│                                    ▼                                         │
+│                    ┌───────────────────────────────┐                       │
+│                    │     dime_base Backend API       │                       │
+│                    │     (http://host:3000)        │                       │
+│                    └───────────────────────────────┘                       │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 15.5 Technology Stack
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Language | Swift 5.9+ | iOS development |
+| UI Framework | SwiftUI | Declarative UI |
+| Networking | URLSession | REST API calls |
+| WebSocket | Starscream | Real-time events |
+| Storage | UserDefaults | Local preferences |
+| Push | APNs | Notifications |
+
+### 15.6 API Integration
+
+The iOS App communicates with the backend via:
+
+| Protocol | Usage |
+|----------|-------|
+| REST API | CRUD operations, chat, decisions |
+| WebSocket | Real-time messaging, status updates |
+| APNs | Push notifications for escalations |
+
+### 15.7 Screen Flow
+
+```
+┌─────────────┐
+│   Launch    │
+│   Screen    │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐     ┌─────────────┐
+│  Login/    │────▶│    Home     │
+│  Register  │     │  (Dime List)│
+└─────────────┘     └──────┬──────┘
+                          │
+         ┌───────────────┼───────────────┐
+         │               │               │
+         ▼               ▼               ▼
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│    Chat     │  │  Decisions  │  │  Settings   │
+│  Interface  │  │   (Pending) │  │  (Profile)  │
+└─────────────┘  └─────────────┘  └─────────────┘
+```
+
+---
+
+*Document Version: 1.3*
 *Last Updated: 2026-03-26*
 *Next Review: After Phase 1 completion*
