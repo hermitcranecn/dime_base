@@ -110,10 +110,8 @@ export function initWebSocket(httpServer: HttpServer): SocketIOServer {
     });
   });
 
-  // Broadcast dime status changes
-  io.on('dime_status_change', (data: { dimeId: string; status: string }) => {
-    io.emit('dime_status', data);
-  });
+  // Note: broadcastDimeStatus is called from outside to emit status changes
+  // See the exported function below
 
   console.log('💰 WebSocket server initialized');
   return io;
@@ -134,6 +132,13 @@ export function broadcastDimeEvent(io: SocketIOServer, dimeId: string, event: st
 }
 
 /**
+ * Broadcast dime status change to all connected clients
+ */
+export function broadcastDimeStatus(io: SocketIOServer, dimeId: string, status: string) {
+  io.emit('dime_status', { dimeId, status });
+}
+
+/**
  * Get connected user count
  */
 export function getConnectedCount(): number {
@@ -144,5 +149,6 @@ export default {
   initWebSocket,
   notifyUser,
   broadcastDimeEvent,
+  broadcastDimeStatus,
   getConnectedCount
 };
