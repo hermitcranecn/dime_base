@@ -16,22 +16,24 @@ dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
+
+// CORS configuration - restrict origins in production
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+
 const io = new Server(httpServer, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
+    origin: CORS_ORIGIN,
+    methods: ['GET', 'POST'],
+    credentials: CORS_ORIGIN !== '*'
   }
 });
 
-// Initialize WebSocket
 initWebSocket(httpServer);
 
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(express.json());
 
-// Health check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -41,7 +43,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes
 import agentRoutes from './api/agents';
 import worldRoutes from './api/world';
 import economyRoutes from './api/economy';
@@ -50,7 +51,6 @@ app.use('/api/agents', agentRoutes);
 app.use('/api/world', worldRoutes);
 app.use('/api/economy', economyRoutes);
 
-// Root endpoint
 app.get('/', (req, res) => {
   res.json({
     name: 'dime_base',
@@ -64,7 +64,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// WebSocket status endpoint
 app.get('/api/status', (req, res) => {
   res.json({
     websocket: 'connected',
@@ -72,7 +71,6 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// Initialize database and start server
 initDatabase().then(() => {
 httpServer.listen(PORT, () => {
   console.log(`
@@ -83,6 +81,7 @@ httpServer.listen(PORT, () => {
 ║                                                           ║
 ║   Server running on port ${PORT}                           ║
 ║   WebSocket: enabled                                     ║
+║   CORS Origin: ${CORS_ORIGIN}                            ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
   `);
