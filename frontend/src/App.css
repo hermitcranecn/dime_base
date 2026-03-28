@@ -68,6 +68,127 @@ body {
   cursor: not-allowed;
 }
 
+/* Auth styles */
+.auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  gap: 1.5rem;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 0.5rem;
+  background: #1a1a2e;
+  padding: 0.5rem;
+  border-radius: 8px;
+}
+
+.auth-tabs button {
+  padding: 0.75rem 2rem;
+  background: transparent;
+  color: #888;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.auth-tabs button.active {
+  background: #00d4ff;
+  color: #000;
+}
+
+.auth-tabs button:hover:not(.active) {
+  background: #2a2a4e;
+  color: #fff;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 300px;
+}
+
+.auth-form input {
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+  border: 2px solid #333;
+  border-radius: 8px;
+  background: #1a1a2e;
+  color: #fff;
+  width: 100%;
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: #00d4ff;
+}
+
+.auth-form button {
+  padding: 1rem;
+  font-size: 1rem;
+  background: #00d4ff;
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.auth-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  justify-content: center;
+  color: #888;
+}
+
+.logout-btn {
+  padding: 0.5rem 1rem;
+  background: #333;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.logout-btn:hover {
+  background: #ff4444;
+}
+
+.no-dime {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.no-dime button {
+  padding: 1rem 3rem;
+  font-size: 1.2rem;
+  background: #00d4ff;
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
 .error {
   color: #ff4444;
   background: #2a1a1a;

@@ -28,7 +28,7 @@ const io = new Server(httpServer, {
   }
 });
 
-initWebSocket(httpServer);
+initWebSocket(httpServer, io);
 
 const PORT = process.env.PORT || 3000;
 
@@ -47,11 +47,13 @@ import agentRoutes from './api/agents';
 import worldRoutes from './api/world';
 import economyRoutes from './api/economy';
 import ragRoutes from './api/rag';
+import authRoutes from './api/auth';
 
 app.use('/api/agents', agentRoutes);
 app.use('/api/world', worldRoutes);
 app.use('/api/economy', economyRoutes);
 app.use('/api/rag', ragRoutes);
+app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
   res.json({
