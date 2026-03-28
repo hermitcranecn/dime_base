@@ -143,21 +143,39 @@ function createTables(): void {
 // ============== CORE API ==============
 
 /**
- * Initialize RAG system
+ * Initialize RAG system (lazy - only if db is ready)
  */
 export function initRAG(): void {
-  createTables();
+  const db = getDb();
+  if (db) {
+    createTables();
+  }
+}
+
+/**
+ * Ensure RAG tables exist (lazy initialization)
+ */
+function ensureTables(): void {
+  const db = getDb();
+  if (db) {
+    try {
+      db.exec("SELECT id FROM knowledge_documents WHERE id = 'init_check'");
+    } catch (e) {
+      createTables();
+    }
+  }
 }
 
 /**
  * Add knowledge document
  */
 export function addKnowledge(
-  ownerId: string, 
-  title: string, 
-  content: string, 
+  ownerId: string,
+  title: string,
+  content: string,
   category?: string
 ): KnowledgeDocument {
+  ensureTables();
   const db = getDb();
   const id = uuidv4();
   const now = new Date().toISOString();
@@ -210,10 +228,11 @@ export function addKnowledge(
  * Query knowledge base
  */
 export function queryKnowledge(
-  ownerId: string, 
-  question: string, 
+  ownerId: string,
+  question: string,
   topK: number = TOP_K
 ): RAGQueryResult {
+  ensureTables();
   const db = getDb();
   
   // Generate query embedding
@@ -282,6 +301,7 @@ export function queryKnowledge(
  * List knowledge documents
  */
 export function listKnowledge(ownerId: string): KnowledgeDocument[] {
+  ensureTables();
   const db = getDb();
   const result = db.exec(
     `SELECT id, owner_id, title, content, category, chunks_json, created_at, updated_at 
@@ -311,6 +331,7 @@ export function listKnowledge(ownerId: string): KnowledgeDocument[] {
  * Delete knowledge document
  */
 export function deleteKnowledge(ownerId: string, documentId: string): boolean {
+  ensureTables();
   const db = getDb();
   
   // Verify ownership
@@ -337,6 +358,7 @@ export function deleteKnowledge(ownerId: string, documentId: string): boolean {
  * Get document by ID
  */
 export function getKnowledge(ownerId: string, documentId: string): KnowledgeDocument | null {
+  ensureTables();
   const db = getDb();
   const result = db.exec(
     `SELECT id, owner_id, title, content, category, chunks_json, created_at, updated_at 

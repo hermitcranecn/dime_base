@@ -9,8 +9,7 @@ import * as rag from '../agents/rag';
 
 const router = Router();
 
-// Initialize RAG on startup
-rag.initRAG();
+// RAG tables are created lazily on first operation
 
 /**
  * POST /api/rag/knowledge
