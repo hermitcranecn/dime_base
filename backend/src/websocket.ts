@@ -26,13 +26,8 @@ interface ChatMessage {
 const connectedUsers = new Map<string, ConnectedUser>();
 const userSockets = new Map<string, string>(); // socketId -> userId
 
-export function initWebSocket(httpServer: HttpServer): SocketIOServer {
-  const io = new SocketIOServer(httpServer, {
-    cors: {
-      origin: '*',
-      methods: ['GET', 'POST']
-    }
-  });
+export function initWebSocket(httpServer: HttpServer, io: SocketIOServer): SocketIOServer {
+  // io is passed from index.ts where CORS is configured
 
   io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);

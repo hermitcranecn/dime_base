@@ -107,10 +107,10 @@ Respond as the human would, considering their personality and preferences.`;
 
   const messages: LLMMessage[] = [
     { role: 'system', content: systemPrompt },
-    ...conversationHistory.map(m => ({
-      role: (m.role === 'owner' ? 'user' : m.role) as LLMMessage['role'],
-      content: m.content
-    })),
+    ...conversationHistory.map(m => {
+      const role: LLMMessage['role'] = m.role === 'dime' ? 'assistant' : 'user';
+      return { role, content: m.content };
+    }),
     { role: 'user', content: userMessage }
   ];
 

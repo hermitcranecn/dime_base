@@ -2,10 +2,12 @@
  * dime Agent Service
  * 
  * Main service for dime (digital me) agent operations
+ * Now uses enhanced memory.ts with all 4 phases
  */
 
-import { createDime, getDime, getDimeByOwner, updateDimeStatus, addMemory, makeDecision, listDimes, Dime, DimePersonality } from './dime';
+import { createDime, getDime, getDimeByOwner, updateDimeStatus, listDimes, Dime, DimePersonality } from './dime';
 import { callLLM, generateAgentResponse, makeDecision as llmMakeDecision } from './llm';
+import * as memory from './memory';
 
 export interface CreateDimeRequest {
   ownerId: string;
@@ -94,6 +96,7 @@ export function getDimeAgent(identifier: string, byOwner: boolean = false): Dime
 
 /**
  * Chat with dime agent (requires owner verification)
+ * Now uses enhanced memory system with all 4 phases
  */
 export async function chatWithDime(request: ChatRequest): Promise<DimeServiceResponse<{ response: string; dime: Dime }>> {
   try {
@@ -110,7 +113,8 @@ export async function chatWithDime(request: ChatRequest): Promise<DimeServiceRes
       return { success: false, error: 'Dime is paused', code: AuthErrorCodes.PAUSED };
     }
 
-    addMemory(request.dimeId, 'conversation', {
+    // Use enhanced memory system (Phase 1-4)
+    memory.addMemory(request.dimeId, 'conversation', {
       role: 'user',
       content: request.message,
       timestamp: new Date()
@@ -126,7 +130,7 @@ export async function chatWithDime(request: ChatRequest): Promise<DimeServiceRes
       request.message
     );
 
-    addMemory(request.dimeId, 'conversation', {
+    memory.addMemory(request.dimeId, 'conversation', {
       role: 'assistant',
       content: response,
       timestamp: new Date()
@@ -215,11 +219,47 @@ export function listAllDimes(): DimeServiceResponse<Dime[]> {
   }
 }
 
+// === Enhanced Memory API (Phase 1-4) ===
+
+/**
+ * Search semantic memory
+ */
+export function searchSemanticMemory(dimeId: string, query: string) {
+  const dime = getDime(dimeId);
+  if (!dime) return { conversations: [], semantic: [], summaries: [] };
+  return memory.searchMemory(dimeId, query);
+}
+
+/**
+ * Get recent conversations with enhanced memory
+ */
+export function getRecentConversations(dimeId: string, limit: number = 10) {
+  return memory.getRecentConversations(dimeId, limit);
+}
+
+/**
+ * Get memory summaries
+ */
+export function getMemorySummaries(dimeId: string) {
+  return memory.getMemorySummaries(dimeId);
+}
+
+/**
+ * Add semantic entry manually
+ */
+export function addSemanticEntry(dimeId: string, key: string, value: string) {
+  return memory.addSemanticEntry(dimeId, key, value);
+}
+
 export default {
   createDimeAgent,
   getDimeAgent,
   chatWithDime,
   decideWithDime,
   setDimeStatus,
-  listAllDimes
+  listAllDimes,
+  searchSemanticMemory,
+  getRecentConversations,
+  getMemorySummaries,
+  addSemanticEntry
 };

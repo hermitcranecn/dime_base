@@ -81,6 +81,7 @@
 │   │   /api/agents/*      → Agent CRUD, Chat, Decisions, Status          │   │
 │   │   /api/world/*       → Playground management, Location               │   │
 │   │   /api/economy/*     → vCoin transactions, Balance, Donations       │   │
+│   │   /api/auth/*        → Owner registration, login, JWT               │   │
 │   │   /health            → Health check                                  │   │
 │   │                                                                      │   │
 │   │   Socket.io          → WebSocket events (dime_message, dime_status)  │   │
@@ -94,6 +95,7 @@
 │                                                                              │
 │   ┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐   │
 │   │   Agent Service   │   │   World Service   │   │  Economy Service  │   │
+│   │   Auth Service    │   │                   │   │                   │   │
 │   │                   │   │                   │   │                   │   │
 │   │ • createDimeAgent │   │ • createPlayground│   │ • getBalance     │   │
 │   │ • getDimeAgent   │   │ • enterPlayground │   │ • earn           │   │
@@ -187,7 +189,42 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 World Core
+### 3.2 Auth Core
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              AUTH CORE                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐       │
+│  │   OWNER ID       │    │   CREDENTIALS    │    │      JWT         │       │
+│  │                  │    │                 │    │                  │       │
+│  │ • format:        │    │ • email (opt)  │    │ • access token  │       │
+│  │   OWN-XXXXXXXX  │    │ • phone (opt)  │    │ • expiry: 24h   │       │
+│  │ • UUID-based    │    │ • passwordHash │    │ • contains:     │       │
+│  │ • unique        │    │   (bcrypt)    │    │   ownerId       │       │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘       │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                      AUTHENTICATION FLOW                                  │ │
+│  │                                                                          │ │
+│  │   REGISTER: credentials → hash password → generate Owner ID → store      │ │
+│  │   LOGIN: credentials → verify → generate JWT → return                    │ │
+│  │   USE API: JWT → verify signature → extract ownerId → authorize         │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                      BACKWARD COMPATIBILITY                              │ │
+│  │                                                                          │ │
+│  │   Existing owners (string IDs like "user123") continue working          │ │
+│  │   New registration required for new owners                                │ │
+│  │   JWT ownerId maps to existing ownerId for migration                     │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.3 World Core
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -297,6 +334,7 @@
 
 | Store | Key | Value | Purpose |
 |-------|-----|-------|---------|
+| `owners` | `ownerId` | `Owner` | Owner accounts |
 | `dimes` | `dimeId` | `Dime` | Agent storage |
 | `playgrounds` | `playgroundId` | `Playground` | World spaces |
 | `accounts` | `userId` | `UserAccount` | User balances |
@@ -313,10 +351,19 @@
 ### 4.3 Data Schema
 
 ```typescript
+// Owner Entity
+interface Owner {
+  id: string;                      // Format: OWN-XXXXXXXX (UUID-like)
+  email: string | null;            // Nullable, unique if provided
+  phone: string | null;            // Nullable, unique if provided
+  passwordHash: string;            // bcrypt hashed
+  createdAt: Date;
+}
+
 // Agent Entity
 interface Dime {
   id: string;                      // UUID v4
-  ownerId: string;                 // Owner's user ID
+  ownerId: string;                 // Owner's Owner ID
   name: string;                   // Agent name (unique per owner)
   personality: DimePersonality;    // Personality configuration
   decisionBoundary: DecisionBoundary;
@@ -325,6 +372,8 @@ interface Dime {
   createdAt: Date;
   lastActive: Date;
 }
+
+// One Owner → One Dime relationship
 
 // Personality Configuration
 interface DimePersonality {
@@ -422,6 +471,11 @@ http://localhost:3000
     ├── /donate                      POST   - Donate
     ├── /exchange                    POST   - Exchange vCoins
     └── /costs                       GET    - Get cost estimates
+│
+└── /api/auth
+    ├── /register                    POST   - Register with email/phone + password
+    ├── /login                       POST   - Login, returns JWT
+    └── /me                          GET    - Get current owner profile
 ```
 
 ### 5.2 WebSocket Events

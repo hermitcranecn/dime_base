@@ -28,7 +28,7 @@ const io = new Server(httpServer, {
   }
 });
 
-initWebSocket(httpServer);
+initWebSocket(httpServer, io);
 
 const PORT = process.env.PORT || 3000;
 

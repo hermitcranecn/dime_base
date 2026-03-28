@@ -54,7 +54,7 @@ function App() {
   // Create or get dime
   const createDime = async () => {
     if (!userId.trim()) return
-    
+
     setLoading(true)
     try {
       const res = await fetch(`${API_BASE}/agents/create`, {
@@ -63,20 +63,20 @@ function App() {
         body: JSON.stringify({ ownerId: userId, name: `${userId}_dime` })
       })
       const data = await res.json()
-      
+
       if (data.success) {
         setDime(data.data)
         socket?.emit('auth', userId)
         socket?.emit('join_dime', data.data.id)
         setView('chat')
-      } else if (data.data) {
-        // Already exists, get it
-        const getRes = await fetch(`${API_BASE}/agents/owner/${userId}`)
-        const getData = await getRes.json()
-        setDime(getData)
+      } else if (data.data && data.data.id) {
+        // Create failed but data contains the existing dime
+        setDime(data.data)
         socket?.emit('auth', userId)
-        socket?.emit('join_dime', getData.id)
+        socket?.emit('join_dime', data.data.id)
         setView('chat')
+      } else {
+        setError(data.error || 'Failed to create dime')
       }
     } catch (err) {
       console.error(err)
@@ -104,7 +104,7 @@ function App() {
       const res = await fetch(`${API_BASE}/agents/${dime.id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg })
+        body: JSON.stringify({ ownerId: dime.ownerId, message: msg })
       })
       const data = await res.json()
 

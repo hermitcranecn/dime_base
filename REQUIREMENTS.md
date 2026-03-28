@@ -50,11 +50,16 @@
 | MVP-9 | Real-time Events | WebSocket for agent interactions | ✅ |
 | MVP-10 | REST API | Full API for all core features | ✅ |
 
-### 2.2 Out of Scope (Future)
+### 2.2 In Progress
+
+| ID | Feature | Description | Status |
+|----|---------|-------------|--------|
+| REG-1 | Owner Registration | Email/phone + password registration | Design |
+
+### 2.3 Out of Scope (Future)
 
 | ID | Feature | Priority |
 |----|---------|----------|
-| FUT-1 | User Authentication | High |
 | FUT-2 | Persistent Storage (SQLite/PostgreSQL) | High |
 | FUT-3 | Encrypted Memory (AES-256) | High |
 | FUT-4 | Rate Limiting | High |
@@ -129,7 +134,7 @@
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-1.1 | Each owner can create one or more Dimes | Critical | ✅ |
+| FR-1.1 | Each owner can create exactly one Dime | Critical | ✅ |
 | FR-1.2 | Dime personality derived from owner questionnaire | Critical | ✅ |
 | FR-1.3 | Dime exhibits owner-like behavior and decisions | Critical | ✅ |
 | FR-1.4 | Dime maintains memory of interactions | High | ⚠️ |
@@ -148,7 +153,32 @@
 | optimism | enum | optimist, pessimist, realist |
 | interests | string[] | Array of interest keywords |
 
-### 4.2 Decision Mechanism
+### 4.2 Owner Registration & Authentication
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| FR-Auth.1 | Owners register with email OR phone + password | Critical | 🔲 |
+| FR-Auth.2 | Owner receives unique Owner ID (format: OWN-XXXXXXXX) | Critical | 🔲 |
+| FR-Auth.3 | Owner logs in with credentials and receives JWT | Critical | 🔲 |
+| FR-Auth.4 | One Owner ID maps to one Dime | Critical | 🔲 |
+| FR-Auth.5 | Existing owners (unauthenticated) continue working | High | 🔲 |
+
+**Owner Identity:**
+
+| Field | Type | Constraints |
+|-------|------|-------------|
+| id | string | Format: OWN-XXXXXXXX (UUID-like) |
+| email | string | Nullable, unique if provided |
+| phone | string | Nullable, unique if provided |
+| passwordHash | string | bcrypt hashed |
+| createdAt | timestamp | Auto-generated |
+
+**Authentication Flow:**
+1. **Register**: POST `/api/auth/register` with `{email|phone, password}` → returns Owner ID
+2. **Login**: POST `/api/auth/login` with `{email|phone, password}` → returns JWT
+3. **Use API**: Include `Authorization: Bearer <jwt>` header for authenticated requests
+
+### 4.3 Decision Mechanism
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
