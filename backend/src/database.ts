@@ -39,11 +39,20 @@ export async function initDatabase(): Promise<void> {
       personality TEXT NOT NULL,
       decision_boundary TEXT NOT NULL,
       memory TEXT NOT NULL,
+      config TEXT NOT NULL DEFAULT '{}',
       status TEXT NOT NULL DEFAULT 'active',
       created_at TEXT NOT NULL,
       last_active TEXT NOT NULL
     )
   `);
+
+  // Migration: Add config column if it doesn't exist (for existing databases)
+  const columns = db.exec("PRAGMA table_info(dimes)");
+  const hasConfigColumn = columns.length > 0 && columns[0].values.some((row: any[]) => row[1] === 'config');
+  if (!hasConfigColumn) {
+    db.run("ALTER TABLE dimes ADD COLUMN config TEXT NOT NULL DEFAULT '{}'");
+    console.log('Migration: Added config column to dimes table');
+  }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS playgrounds (
@@ -84,6 +93,78 @@ export async function initDatabase(): Promise<void> {
       description TEXT NOT NULL DEFAULT '',
       timestamp TEXT NOT NULL,
       FOREIGN KEY (user_id) REFERENCES accounts(user_id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS d2d_channels (
+      id TEXT PRIMARY KEY,
+      dime_a TEXT NOT NULL,
+      dime_b TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL,
+      last_activity TEXT NOT NULL,
+      FOREIGN KEY (dime_a) REFERENCES dimes(id),
+      FOREIGN KEY (dime_b) REFERENCES dimes(id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS d2d_messages (
+      id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL,
+      from_dime_id TEXT NOT NULL,
+      to_dime_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      FOREIGN KEY (channel_id) REFERENCES d2d_channels(id),
+      FOREIGN KEY (from_dime_id) REFERENCES dimes(id),
+      FOREIGN KEY (to_dime_id) REFERENCES dimes(id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS digital_goods (
+      id TEXT PRIMARY KEY,
+      developer_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      price REAL NOT NULL DEFAULT 0,
+      pricing_type TEXT NOT NULL DEFAULT 'one-time',
+      category TEXT NOT NULL,
+      stats TEXT NOT NULL DEFAULT '{"purchases": 0, "rating": 5.0, "uses": 0}',
+      published_at TEXT NOT NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS dime_scopes (
+      dime_id TEXT PRIMARY KEY,
+      max_spend_per_transaction REAL NOT NULL DEFAULT 50,
+      daily_limit REAL NOT NULL DEFAULT 100,
+      monthly_budget REAL NOT NULL DEFAULT 500,
+      allowed_categories TEXT NOT NULL DEFAULT '[]',
+      allowed_types TEXT NOT NULL DEFAULT '[]',
+      can_receive_gifts INTEGER NOT NULL DEFAULT 1,
+      can_send_gifts INTEGER NOT NULL DEFAULT 0,
+      can_sell_to_others INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (dime_id) REFERENCES dimes(id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS dime_goods (
+      id TEXT PRIMARY KEY,
+      goods_id TEXT NOT NULL,
+      dime_id TEXT NOT NULL,
+      purchased_by TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'owned',
+      config TEXT NOT NULL DEFAULT '{}',
+      purchased_at TEXT NOT NULL,
+      equipped_at TEXT,
+      FOREIGN KEY (goods_id) REFERENCES digital_goods(id),
+      FOREIGN KEY (dime_id) REFERENCES dimes(id)
     )
   `);
 

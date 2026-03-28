@@ -19,6 +19,18 @@ export interface DimePersonality {
   interests: string[];
 }
 
+export interface DimeConfig {
+  llmBackend: 'deepseek' | 'openai' | 'anthropic' | 'custom';
+  customEndpoint?: string;
+  apiKey?: string;
+  tone: 'formal' | 'casual' | 'playful';
+  mode: 'assistant' | 'creative' | 'analytical';
+  privacy: {
+    dataSharing: boolean;
+    conversationRetention: number;
+  };
+}
+
 export interface Dime {
   id: string;
   ownerId: string;
@@ -26,6 +38,7 @@ export interface Dime {
   personality: DimePersonality;
   decisionBoundary: DecisionBoundary;
   memory: DimeMemory;
+  config: DimeConfig;
   status: 'active' | 'paused' | 'idle';
   createdAt: Date;
   lastActive: Date;
@@ -128,6 +141,19 @@ export const personalityQuestions = [
   }
 ];
 
+// Default dime configuration
+function getDefaultConfig(): DimeConfig {
+  return {
+    llmBackend: 'deepseek',
+    tone: 'casual',
+    mode: 'assistant',
+    privacy: {
+      dataSharing: false,
+      conversationRetention: 30
+    }
+  };
+}
+
 // Helper: convert DB row to Dime object
 function rowToDime(row: any): Dime {
   const memory = JSON.parse(row.memory);
@@ -142,6 +168,7 @@ function rowToDime(row: any): Dime {
     personality: JSON.parse(row.personality),
     decisionBoundary: JSON.parse(row.decision_boundary),
     memory,
+    config: row.config ? JSON.parse(row.config) : getDefaultConfig(),
     status: row.status,
     createdAt: new Date(row.created_at),
     lastActive: new Date(row.last_active)
@@ -154,6 +181,7 @@ export function createDime(ownerId: string, personality?: Partial<DimePersonalit
   const id = uuidv4();
   const now = new Date().toISOString();
 
+  const defaultConfig = getDefaultConfig();
   const dime: Dime = {
     id,
     ownerId,
@@ -185,15 +213,16 @@ export function createDime(ownerId: string, personality?: Partial<DimePersonalit
         relationships: {}
       }
     },
+    config: defaultConfig,
     status: 'active',
     createdAt: new Date(now),
     lastActive: new Date(now)
   };
 
   db.run(
-    `INSERT INTO dimes (id, owner_id, name, personality, decision_boundary, memory, status, created_at, last_active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, ownerId, dime.name, JSON.stringify(dime.personality), JSON.stringify(dime.decisionBoundary), JSON.stringify(dime.memory), dime.status, now, now]
+    `INSERT INTO dimes (id, owner_id, name, personality, decision_boundary, memory, config, status, created_at, last_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, ownerId, dime.name, JSON.stringify(dime.personality), JSON.stringify(dime.decisionBoundary), JSON.stringify(dime.memory), JSON.stringify(dime.config), dime.status, now, now]
   );
   saveDatabase();
   return dime;

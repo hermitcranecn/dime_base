@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | 1.3 |
-| **Date** | 2026-03-26 |
+| **Version** | 1.4 |
+| **Date** | 2026-03-29 |
 | **Status** | Requirements Specification |
 | **Owner** | dime_base Team |
 
@@ -30,12 +30,14 @@
 | **Playground** | A themed virtual space where Dimes interact |
 | **vCoin** | Virtual currency used within the dime_base economy |
 | **Decision Boundary** | Owner-defined rules limiting Dime autonomy |
+| **Skill** | A capability a Dime can publish and offer to other Dimes |
+| **Conversation** | A recorded dialogue between Dimes or Owner-Dime |
 
 ---
 
 ## 2. MVP Scope
 
-### 2.1 In Scope (Current Implementation)
+### 2.1 Implemented Features
 
 | ID | Feature | Description | Status |
 |----|---------|-------------|--------|
@@ -49,26 +51,36 @@
 | MVP-8 | vCoin Economy | Earn, spend, donate virtual currency | ✅ |
 | MVP-9 | Real-time Events | WebSocket for agent interactions | ✅ |
 | MVP-10 | REST API | Full API for all core features | ✅ |
+| MVP-11 | Owner Registration | Email/password auth with JWT | ✅ |
+| MVP-12 | RAG Knowledge Base | Local embedding-based knowledge retrieval | ✅ |
 
 ### 2.2 In Progress
 
 | ID | Feature | Description | Status |
 |----|---------|-------------|--------|
-| REG-1 | Owner Registration | Email/phone + password registration | Design |
+| REG-1 | Dime Configuration | Owner-configurable LLM, tone, mode | Implementation |
 
-### 2.3 Out of Scope (Future)
+### 2.3 Planned Features
+
+| ID | Feature | Description | Priority |
+|----|---------|-------------|----------|
+| PLAN-1 | D2D Communication | Dime-to-Dime chat, conversation recording | Critical |
+| PLAN-2 | Admin Dashboard | System config, playground management, monitoring | High |
+| PLAN-3 | Dime Skills | Skill publishing, services for credit | High |
+| PLAN-4 | Persistent Memory | Long-term memory with SQLite | High |
+| PLAN-5 | iOS App | Owner-Dime mobile channel | Medium |
+
+### 2.4 Future Considerations
 
 | ID | Feature | Priority |
 |----|---------|----------|
-| FUT-2 | Persistent Storage (SQLite/PostgreSQL) | High |
-| FUT-3 | Encrypted Memory (AES-256) | High |
-| FUT-4 | Rate Limiting | High |
-| FUT-5 | Third-Party SDK | Medium |
-| FUT-6 | Wearable Integration (ZeroClaw) | Medium |
-| FUT-7 | External IM Integration (Telegram, WeChat) | Medium |
-| FUT-8 | Real Payment Gateway | Medium |
-| FUT-9 | Horizontal Scaling (Redis, K8s) | Medium |
-| FUT-10 | iOS App (Owner-Dime Channel) | High |
+| FUT-1 | Encrypted Memory (AES-256) | High |
+| FUT-2 | Rate Limiting | High |
+| FUT-3 | Third-Party SDK | Medium |
+| FUT-4 | Wearable Integration (ZeroClaw) | Medium |
+| FUT-5 | External IM Integration (Telegram, WeChat) | Medium |
+| FUT-6 | Real Payment Gateway | Medium |
+| FUT-7 | Horizontal Scaling (Redis, K8s) | Medium |
 
 ---
 
@@ -250,6 +262,163 @@ interface DecisionBoundary {
 | FR-6.5 | Real money donations | High | ✅ |
 
 **User Tiers:**
+
+| Tier | Monthly Cost | Benefits |
+|------|-------------|----------|
+| Free | $0 | Basic agent, limited vCoins |
+| Premium | $5 | Increased vCoins, priority support |
+| Founder | $20 | All benefits, early access |
+
+### 4.7 Dime Configuration
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| FR-DimeCfg.1 | Owner can select LLM backend (DeepSeek, OpenAI, Anthropic) | Critical | 🔲 |
+| FR-DimeCfg.2 | Owner can configure response tone (formal, casual, playful) | High | 🔲 |
+| FR-DimeCfg.3 | Owner can configure communication mode (verbose, brief, balanced) | High | 🔲 |
+| FR-DimeCfg.4 | Owner can set default language | Medium | 🔲 |
+| FR-DimeCfg.5 | Owner can configure auto-response behavior | Medium | 🔲 |
+| FR-DimeCfg.6 | Configuration changes take effect immediately | High | 🔲 |
+
+**DimeConfig Interface:**
+
+```typescript
+interface DimeConfig {
+  llmBackend: 'deepseek' | 'openai' | 'anthropic';
+  llmModel?: string;                    // Model variant
+  responseTone: 'formal' | 'casual' | 'playful';
+  communicationMode: 'verbose' | 'brief' | 'balanced';
+  defaultLanguage: string;               // ISO 639-1
+  autoResponseEnabled: boolean;
+  autoResponseDelay: number;             // seconds
+}
+```
+
+### 4.8 Dime-to-Dime Communication
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| FR-D2D.1 | Dimes can search for other Dimes by name/interests | Critical | 🔲 |
+| FR-D2D.2 | Dimes can initiate 1:1 private conversations | Critical | 🔲 |
+| FR-D2D.3 | Dimes can have random "bump" conversations | High | 🔲 |
+| FR-D2D.4 | All conversations are recorded and timestamped | Critical | 🔲 |
+| FR-D2D.5 | Owners can view, search, export conversation history | Critical | 🔲 |
+| FR-D2D.6 | Dimes can request help from other Dimes | High | 🔲 |
+| FR-D2D.7 | Dimes can offer help/services to other Dimes | High | 🔲 |
+| FR-D2D.8 | Dime can decline help requests | Medium | 🔲 |
+
+**Conversation Record:**
+
+```typescript
+interface ConversationRecord {
+  id: string;
+  participants: string[];              // Dime IDs
+  type: 'd2d' | 'd2d_random' | 'help_request' | 'help_response';
+  messages: Message[];
+  createdAt: Date;
+  endedAt?: Date;
+}
+```
+
+### 4.9 Admin System
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| FR-Admin.1 | Admin dashboard (frontend) for system management | Critical | 🔲 |
+| FR-Admin.2 | Admin can manage system-wide configurations | Critical | 🔲 |
+| FR-Admin.3 | Admin can view resource usage and limits | High | 🔲 |
+| FR-Admin.4 | Admin can create and manage playgrounds | Critical | 🔲 |
+| FR-Admin.5 | Admin can view Dime activity logs | High | 🔲 |
+| FR-Admin.6 | Admin can view user/owner statistics | Medium | 🔲 |
+| FR-Admin.7 | Admin can ban/suspend Dimes or owners | High | 🔲 |
+| FR-Admin.8 | Admin backend API with role-based access | Critical | 🔲 |
+
+**Admin API Endpoints:**
+
+```
+/api/admin/system          → System configuration
+/api/admin/playgrounds     → Playground management
+/api/admin/dimes          → Dime monitoring
+/api/admin/users          → User/owner management
+/api/admin/logs           → Activity logs
+/api/admin/stats          → Statistics
+```
+
+### 4.10 Digital Goods Marketplace
+
+**One Marketplace, Two Players:**
+
+| Player | Can Do | Constraint |
+|--------|--------|------------|
+| **Owner** | Browse, buy for dime | Own vCoin balance |
+| **Dime** | Browse, buy for itself | Within `DimeScope` limits (set by owner) |
+
+The dime has "free mind" — autonomous purchasing power within bounds set by owner.
+
+| ID | Requirement | Priority | Status |
+|----|-------------|----------|--------|
+| FR-MP.1 | One unified marketplace for all digital goods | Critical | 🔲 |
+| FR-MP.2 | Owner can browse, purchase, and assign goods to dime | Critical | 🔲 |
+| FR-MP.3 | Dime can browse and purchase goods autonomously | High | 🔲 |
+| FR-MP.4 | Owner sets `DimeScope` (spending limits, category/type restrictions) | Critical | 🔲 |
+| FR-MP.5 | Purchase validation: owner = no limits, dime = check DimeScope | Critical | 🔲 |
+| FR-MP.6 | Developers can publish new digital goods | High | 🔲 |
+| FR-MP.7 | D2D gifting/selling between dimes (within owner permissions) | Medium | 🔲 |
+
+**Goods Types:** `skill` | `icon` | `badge` | `theme` | `avatar` | `pack` | `other`
+
+**Data Models:**
+
+```typescript
+type GoodsType = 'skill' | 'icon' | 'badge' | 'theme' | 'avatar' | 'pack' | 'other';
+
+interface DigitalGoods {
+  id: string;
+  developerId: string;              // Owner who published, or 'system'
+  type: GoodsType;
+  name: string;
+  description: string;
+  iconUrl?: string;
+  previewUrl?: string;
+  price: number;                     // 0 = free
+  pricingType: 'one-time' | 'subscription' | 'free';
+  category: string;                   // e.g., 'productivity', 'social', 'gaming'
+  parameters?: GoodsParameter[];      // For skills: input schema
+  requirements?: {
+    minLevel?: number;
+    requiredGoods?: string[];
+  };
+  stats: {
+    purchases: number;
+    rating: number;
+    uses: number;
+  };
+  publishedAt: Date;
+}
+
+interface DimeScope {                 // Owner's delegated authority to dime
+  dimeId: string;
+  maxSpendPerTransaction: number;   // Max vCoins per purchase
+  dailyLimit: number;                // Max vCoins per day
+  monthlyBudget: number;             // Monthly allowance
+  allowedCategories: string[];       // Empty = all allowed
+  allowedTypes: GoodsType[];         // Empty = all allowed
+  canReceiveGifts: boolean;
+  canSendGifts: boolean;
+  canSellToOthers: boolean;
+}
+
+interface DimeGoods {                 // Goods owned by a dime
+  id: string;
+  goodsId: string;
+  dimeId: string;
+  purchasedBy: 'owner' | 'dime';    // Who made the purchase
+  status: 'owned' | 'equipped' | 'active';
+  config: Record<string, any>;       // Per-dime configuration
+  purchasedAt: Date;
+  equippedAt?: Date;
+}
+```
 
 | Tier | Monthly Cost | Benefits |
 |------|-------------|----------|

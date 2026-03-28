@@ -1,7 +1,7 @@
 # dime_base Technical Architecture
 
-**Version:** 1.0
-**Date:** 2026-03-26
+**Version:** 1.1
+**Date:** 2026-03-29
 **Status:** For Review
 
 ---
@@ -36,6 +36,16 @@
 │   │ • Personality│ │ • Spatial   │  │ • Earn/Spend│           │
 │   │ • Memory    │  │ • Events    │  │ • Donate   │           │
 │   │ • Decision  │  │             │  │             │           │
+│   └─────────────┘  └─────────────┘  └─────────────┘           │
+│                                                                  │
+│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐           │
+│   │   Dime      │  │  Marketplace │  │   Admin    │           │
+│   │   Config    │  │             │  │   Dashboard │           │
+│   │             │  │ • One market │  │             │           │
+│   │ • LLM backend│ │ • Two players│  │ • System    │           │
+│   │ • Tone      │  │   owner/dime │  │   mgmt     │           │
+│   │ • Mode      │  │ • DimeScope  │  │ • Playground│           │
+│   │ • Privacy   │  │   limits     │  │   mgmt     │           │
 │   └─────────────┘  └─────────────┘  └─────────────┘           │
 │                                                                  │
 │   ┌─────────────────────────────────────────────────────────┐   │
@@ -82,6 +92,9 @@
 │   │   /api/world/*       → Playground management, Location               │   │
 │   │   /api/economy/*     → vCoin transactions, Balance, Donations       │   │
 │   │   /api/auth/*        → Owner registration, login, JWT               │   │
+│   │   /api/d2d/*         → Dime-to-Dime chat, conversation recording    │   │
+│   │   /api/marketplace/* → Unified marketplace (owner + dime buyers)   │   │
+│   │   /api/admin/*       → System admin, playground management          │   │
 │   │   /health            → Health check                                  │   │
 │   │                                                                      │   │
 │   │   Socket.io          → WebSocket events (dime_message, dime_status)  │   │
@@ -102,6 +115,16 @@
 │   │ • chatWithDime   │   │ • exitPlayground  │   │ • spend          │   │
 │   │ • decideWithDime │   │ • updateLocation  │   │ • donate         │   │
 │   │ • setDimeStatus  │   │                   │   │ • exchange       │   │
+│   └───────────────────┘   └───────────────────┘   └───────────────────┘   │
+│                                                                              │
+│   ┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐   │
+│   │   D2D Service     │   │ Marketplace Service│   │   Config Service  │   │
+│   │                   │   │                   │   │                   │   │
+│   │ • initiateChat    │   │ • browseGoods    │   │ • updateConfig   │   │
+│   │ • sendMessage     │   │ • purchaseGoods  │   │ • getLLMBackend  │   │
+│   │ • recordConv      │   │ • validateScope  │   │ • setTone        │   │
+│   │ • getHistory      │   │ • updateScope    │   │ • setPrivacy     │   │
+│   │                   │   │ • equipGoods    │   │ • setDimeScope   │   │
 │   └───────────────────┘   └───────────────────┘   └───────────────────┘   │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -128,6 +151,11 @@
 │   ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐      │
 │   │   DeepSeek LLM  │     │     Redis       │     │   PostgreSQL    │      │
 │   │   API           │     │   (Future)      │     │   (Future)      │      │
+│   └─────────────────┘     └─────────────────┘     └─────────────────┘      │
+│                                                                              │
+│   ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐      │
+│   │   OpenAI LLM    │     │   Anthropic     │     │   Skill APIs   │      │
+│   │   (Config)      │     │   (Config)      │     │   (Marketplace) │      │
 │   └─────────────────┘     └─────────────────┘     └─────────────────┘      │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -255,7 +283,144 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.3 Economy Core
+### 3.4 Dime-to-Dime (D2D) Core
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           D2D COMMUNICATION CORE                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐       │
+│  │   CONVERSATION  │    │     MESSAGE      │    │   CONFLICT      │       │
+│  │     MANAGER      │    │     BROKER       │    │   RESOLUTION    │       │
+│  │                  │    │                 │    │                 │       │
+│  • createChannel   │    │ • routeMessage  │    │ • auto-escalate │       │
+│  • recordMessage   │    │ • delivery      │    │ • human review  │       │
+│  • getHistory      │    │ • ack/nack      │    │ • voting        │       │
+│  • archiveConv     │    │ • threading     │    │                 │       │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘       │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                      CONVERSATION RECORDING                               │ │
+│  │                                                                          │ │
+│  │   All D2D messages stored with:                                          │ │
+│  │   • Timestamp, participants, message content                             │ │
+│  │   • Owner can review own dime's conversations                           │ │
+│  │   • Privacy: other owners cannot see conversations                      │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.5 Dime Configuration Core
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DIME CONFIGURATION CORE                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐       │
+│  │   LLM BACKEND   │    │    TONE/MODE     │    │    PRIVACY      │       │
+│  │    SELECTION    │    │    SETTINGS      │    │    CONTROLS     │       │
+│  │                  │    │                 │    │                 │       │
+│  • deepseek        │    │ • tone:         │    │ • dataSharing   │       │
+│  • openai          │    │   formal/       │    │ • conversation  │       │
+│  • anthropic       │    │   casual/       │    │   retention     │       │
+│  • custom endpoint │    │   playful       │    │ • thirdParty    │       │
+│  • apiKey config   │    │ • mode:         │    │   access        │       │
+│  • model version   │    │   assistant/    │    │                 │       │
+│  │                 │    │   creative/     │    │                 │       │
+│  │                 │    │   analytical    │    │                 │       │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘       │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                      CONFIG PERSISTENCE                                  │ │
+│  │                                                                          │ │
+│  │   Owner can configure per-dime:                                         │ │
+│  │   • Which LLM backend to use for this dime                              │ │
+│  │   • Personality tone and operational mode                               │ │
+│  │   • Privacy settings (what data is stored/shared)                       │ │
+│  │   • Response latency tolerance                                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.6 Admin Dashboard Core
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            ADMIN DASHBOARD CORE                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐       │
+│  │   SYSTEM STATS  │    │  PLAYGROUND     │    │   USER MGMT     │       │
+│  │                 │    │   MANAGEMENT    │    │                 │       │
+│  │ • activeUsers   │    │                 │    │ • list owners   │       │
+│  │ • totalDimes    │    │ • create/delete │    │ • suspend account│       │
+│  │ • avgActivity   │    │ • view usage    │    │ • reset password │       │
+│  │ • revenue       │    │ • set capacity  │    │ • impersonate   │       │
+│  │ • error rates   │    │ • configure    │    │   (emergency)   │       │
+│  │                 │    │   settings      │    │                 │       │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘       │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                      AUDIT LOGGING                                        │ │
+│  │                                                                          │ │
+│  │   All admin actions logged with:                                         │ │
+│  │   • Admin ID, action, timestamp, affected resources                      │ │
+│  │   • Cannot be deleted or modified                                        │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.7 Digital Goods Marketplace
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      DIGITAL GOODS MARKETPLACE                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                      ONE MARKETPLACE, TWO PLAYERS                       │ │
+│  │                                                                        │ │
+│  │   OWNER                              DIME                              │ │
+│  │   ─────                              ────                              │ │
+│  │   • Browse & purchase for dime      • Browse & purchase for self      │ │
+│  │   • No spending limits              • Within DimeScope limits         │ │
+│  │   • Full vCoin balance              • Delegated authority             │ │
+│  │   • Assign goods to dime            • Autonomous within bounds        │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐       │
+│  │   GOODS TYPES   │    │   MARKETPLACE   │    │   SCOPE MGMT    │       │
+│  │                 │    │                 │    │                 │       │
+│  │ • skill         │    │ • browse/search │    │ • max spend/txn │       │
+│  │ • icon          │    │ • featured      │    │ • daily limit   │       │
+│  │ • badge         │    │ • categories    │    │ • monthly budget │       │
+│  │ • theme         │    │ • pricing       │    │ • allowed types  │       │
+│  │ • avatar        │    │ • reviews       │    │ • allowed cats   │       │
+│  │ • pack          │    │ • purchase      │    │ • gift perms     │       │
+│  │ • other        │    │                 │    │                 │       │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘       │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                      PURCHASE VALIDATION                                │ │
+│  │                                                                          │ │
+│  │   Owner buys:  → No scope check, just check vCoin balance              │ │
+│  │   Dime buys:   → Check DimeScope:                                       │ │
+│  │                     • Within transaction limit?                         │ │
+│  │                     • Within daily limit (remaining)?                   │ │
+│  │                     • Within monthly budget (remaining)?                │ │
+│  │                     • Category/type allowed?                            │ │
+│  │                     → Approve or Reject                                  │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.8 Economy Core
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -434,6 +599,42 @@ interface Transaction {
   timestamp: Date;
   description: string;
 }
+
+// Digital Goods Marketplace
+type GoodsType = 'skill' | 'icon' | 'badge' | 'theme' | 'avatar' | 'pack' | 'other';
+
+interface DigitalGoods {
+  id: string;
+  developerId: string;
+  type: GoodsType;
+  name: string;
+  description: string;
+  price: number;                    // 0 = free
+  pricingType: 'one-time' | 'subscription' | 'free';
+  category: string;
+  stats: { purchases: number; rating: number; uses: number };
+}
+
+interface DimeScope {               // Owner's delegated authority to dime
+  dimeId: string;
+  maxSpendPerTransaction: number;
+  dailyLimit: number;
+  monthlyBudget: number;
+  allowedCategories: string[];      // Empty = all allowed
+  allowedTypes: GoodsType[];         // Empty = all allowed
+  canReceiveGifts: boolean;
+  canSendGifts: boolean;
+}
+
+interface DimeGoods {               // Goods owned by a specific dime
+  id: string;
+  goodsId: string;
+  dimeId: string;
+  purchasedBy: 'owner' | 'dime';   // Who made the purchase
+  status: 'owned' | 'equipped' | 'active';
+  config: Record<string, any>;
+  purchasedAt: Date;
+}
 ```
 
 ---
@@ -476,6 +677,31 @@ http://localhost:3000
     ├── /register                    POST   - Register with email/phone + password
     ├── /login                       POST   - Login, returns JWT
     └── /me                          GET    - Get current owner profile
+
+└── /api/d2d
+    ├── /channels                    POST   - Initiate D2D channel
+    ├── /channels/:channelId         GET   - Get channel info/history
+    ├── /channels/:channelId/messages POST  - Send message
+    └── /channels/:channelId/leave   POST   - Leave channel
+
+└── /api/marketplace
+    ├── /goods                       GET    - List all digital goods
+    ├── /goods/:goodsId              GET    - Get goods details
+    ├── /goods/:goodsId/purchase     POST   - Purchase (body: { buyer: 'owner'|'dime', dimeId? })
+    ├── /goods/:goodsId/subscribe    POST   - Subscribe (body: { buyer, dimeId? })
+    ├── /my                          GET    - List owned goods (query: ?dimeId=)
+    ├── /my/:dimeId                  GET    - List dime's equipped goods
+    ├── /scope/:dimeId               GET    - Get dime's scope
+    ├── /scope/:dimeId               PUT    - Update dime's scope
+    └── /publish                     POST   - Publish new goods (developer)
+
+└── /api/admin
+    ├── /stats                       GET    - System statistics
+    ├── /owners                      GET    - List all owners
+    ├── /owners/:ownerId/suspend     POST   - Suspend owner
+    ├── /playgrounds                  POST   - Create playground
+    ├── /playgrounds/:id             DELETE - Delete playground
+    └── /audit                        GET    - Audit logs
 ```
 
 ### 5.2 WebSocket Events
@@ -809,11 +1035,21 @@ dime_base/
 │   │   ├── agents/
 │   │   │   ├── dime.ts          # Domain entities
 │   │   │   ├── service.ts       # Business logic
-│   │   │   └── llm.ts           # LLM integration
+│   │   │   ├── llm.ts           # LLM integration
+│   │   │   ├── auth.ts          # Authentication
+│   │   │   ├── rag.ts           # RAG knowledge base
+│   │   │   ├── d2d.ts           # D2D communication
+│   │   │   ├── marketplace.ts   # Digital goods marketplace
+│   │   │   └── config.ts        # Dime configuration
 │   │   ├── api/
 │   │   │   ├── agents.ts        # Agent routes
 │   │   │   ├── world.ts         # World routes
-│   │   │   └── economy.ts       # Economy routes
+│   │   │   ├── economy.ts       # Economy routes
+│   │   │   ├── auth.ts          # Auth routes
+│   │   │   ├── rag.ts           # RAG routes
+│   │   │   ├── d2d.ts           # D2D routes
+│   │   │   ├── marketplace.ts   # Unified marketplace routes
+│   │   │   └── admin.ts         # Admin routes
 │   │   ├── websocket.ts         # Socket.io handler
 │   │   └── index.ts             # Entry point
 │   └── package.json
@@ -850,6 +1086,6 @@ dime_base/
 
 ---
 
-*Document Version: 1.0*
+*Document Version: 1.1*
 *For Review: Architecture Team*
-*Last Updated: 2026-03-26*
+*Last Updated: 2026-03-29*

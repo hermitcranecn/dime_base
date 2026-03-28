@@ -94,6 +94,53 @@ export function initWebSocket(httpServer: HttpServer, io: SocketIOServer): Socke
       });
     });
 
+    // D2D channel creation
+    socket.on('d2d_create_channel', (data: { dimeA: string; dimeB: string }) => {
+      const { createD2DChannel } = require('./agents/d2d');
+      const result = createD2DChannel(data.dimeA, data.dimeB);
+
+      if (result.success && result.data) {
+        // Notify both dimes
+        io.to(`dime:${data.dimeA}`).emit('d2d_channel_created', result.data);
+        io.to(`dime:${data.dimeB}`).emit('d2d_channel_created', result.data);
+      } else {
+        socket.emit('d2d_channel_error', result);
+      }
+    });
+
+    // D2D message sending
+    socket.on('d2d_send_message', (data: { channelId: string; fromDimeId: string; content: string }) => {
+      const { sendD2DMessage, getD2DChannel } = require('./agents/d2d');
+      const result = sendD2DMessage(data.channelId, data.fromDimeId, data.content);
+
+      if (result.success && result.data) {
+        const channelResult = getD2DChannel(data.channelId);
+        if (channelResult.success && channelResult.data) {
+          const channel = channelResult.data;
+          // Broadcast to both dimes in the channel
+          io.to(`dime:${channel.dimeA}`).emit('d2d_message', result.data);
+          io.to(`dime:${channel.dimeB}`).emit('d2d_message', result.data);
+        }
+      } else {
+        socket.emit('d2d_message_error', result);
+      }
+    });
+
+    // D2D channel closure
+    socket.on('d2d_close_channel', (data: { channelId: string; requesterDimeId: string }) => {
+      const { closeD2DChannel, getD2DChannel } = require('./agents/d2d');
+      const result = closeD2DChannel(data.channelId, data.requesterDimeId);
+
+      if (result.success && result.data) {
+        const channel = result.data;
+        // Notify both dimes that channel is closed
+        io.to(`dime:${channel.dimeA}`).emit('d2d_channel_closed', result.data);
+        io.to(`dime:${channel.dimeB}`).emit('d2d_channel_closed', result.data);
+      } else {
+        socket.emit('d2d_channel_error', result);
+      }
+    });
+
     // Disconnect
     socket.on('disconnect', () => {
       const user = connectedUsers.get(socket.id);

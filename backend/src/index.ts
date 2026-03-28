@@ -50,12 +50,20 @@ import worldRoutes from './api/world';
 import economyRoutes from './api/economy';
 import ragRoutes from './api/rag';
 import authRoutes from './api/auth';
+import d2dRoutes from './api/d2d';
+import configRoutes from './api/config';
+import adminRoutes from './api/admin';
+import marketplaceRoutes from './api/marketplace';
 
 app.use('/api/agents', agentRoutes);
 app.use('/api/world', worldRoutes);
 app.use('/api/economy', economyRoutes);
+app.use('/api/d2d', d2dRoutes);
 app.use('/api/rag', ragRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/config', configRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
 
 app.get('/', (req, res) => {
   res.json({
@@ -66,7 +74,12 @@ app.get('/', (req, res) => {
       agents: '/api/agents',
       world: '/api/world',
       economy: '/api/economy',
-      rag: '/api/rag'
+      d2d: '/api/d2d',
+      rag: '/api/rag',
+      auth: '/api/auth',
+      config: '/api/config',
+      admin: '/api/admin',
+      marketplace: '/api/marketplace'
     }
   });
 });
