@@ -5,6 +5,7 @@
  */
 
 import express from 'express';
+import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
@@ -32,6 +33,7 @@ initWebSocket(httpServer, io);
 
 const PORT = process.env.PORT || 3000;
 
+app.use(cors({ origin: CORS_ORIGIN, credentials: CORS_ORIGIN !== '*' }));
 app.use(express.json());
 
 app.get('/health', (req, res) => {

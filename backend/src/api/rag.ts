@@ -91,13 +91,13 @@ router.delete('/knowledge/:ownerId/:documentId', (req, res) => {
 router.post('/query', (req, res) => {
   try {
     const { ownerId, question, topK } = req.body;
-    
+
     if (!ownerId || !question) {
-      return res.status(400).json({ 
-        error: 'ownerId and question are required' 
+      return res.status(400).json({
+        error: 'ownerId and question are required'
       });
     }
-    
+
     const result = rag.queryKnowledge(ownerId, question, topK);
     res.json({ success: true, ...result });
   } catch (error: any) {
