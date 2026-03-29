@@ -8,7 +8,6 @@ import DimeConfig from './pages/DimeConfig'
 import D2DChat from './pages/D2DChat'
 import AdminDashboard from './pages/AdminDashboard'
 import Marketplace from './pages/Marketplace'
-import Skills from './pages/Skills'
 
 // Types
 interface Owner {
@@ -321,7 +320,6 @@ function AppContent() {
           <Link to="/config" className={location.pathname === '/config' ? 'active' : ''}>Config</Link>
           <Link to="/d2d" className={location.pathname === '/d2d' ? 'active' : ''}>D2D</Link>
           <Link to="/marketplace" className={location.pathname === '/marketplace' ? 'active' : ''}>Marketplace</Link>
-          <Link to="/skills" className={location.pathname === '/skills' ? 'active' : ''}>Skills</Link>
           <Link to="/admin" className={location.pathname === '/admin' ? 'active' : ''}>Admin</Link>
         </nav>
         <div className="user-info">
@@ -366,7 +364,6 @@ function AppContent() {
           <Route path="/config" element={<DimeConfig dimeId={dime.id} ownerId={auth.owner!.id} />} />
           <Route path="/d2d" element={<D2DChat myDimeId={dime.id} ownerId={auth.owner!.id} />} />
           <Route path="/marketplace" element={<Marketplace ownerId={auth.owner!.id} dimeId={dime.id} />} />
-          <Route path="/skills" element={<Skills ownerId={auth.owner!.id} dimeId={dime.id} />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </main>

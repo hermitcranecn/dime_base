@@ -168,6 +168,19 @@ export async function initDatabase(): Promise<void> {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS admins (
+      id TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('super_admin', 'admin')),
+      token_hash TEXT,
+      created_at TEXT NOT NULL,
+      created_by TEXT,
+      FOREIGN KEY (owner_id) REFERENCES owners(id),
+      FOREIGN KEY (created_by) REFERENCES admins(id)
+    )
+  `);
+
   // Seed default playground
   const existing = db.exec("SELECT id FROM playgrounds WHERE id = 'main_plaza'");
   if (existing.length === 0) {

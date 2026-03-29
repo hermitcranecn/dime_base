@@ -6,7 +6,7 @@
 
 import { Router, Request, Response } from 'express';
 import * as admin from '../agents/admin';
-import { authenticateRequest } from '../agents/auth';
+import { authenticateRequest, isSuperAdmin } from '../agents/auth';
 
 const router = Router();
 
@@ -14,7 +14,7 @@ const router = Router();
 
 /**
  * Admin authentication middleware
- * Verifies JWT token and logs admin actions
+ * Verifies JWT token and checks if user is an admin (any role)
  */
 function adminAuth(req: Request, res: Response, next: Function) {
   const authHeader = req.headers.authorization;
@@ -27,10 +27,32 @@ function adminAuth(req: Request, res: Response, next: Function) {
     });
   }
 
-  // In a real system, check if user has admin role
-  // For MVP, we'll allow all authenticated users
-  req.body.adminId = decoded.ownerId;
+  // Check if user is an admin (any role)
+  if (!admin.isAdmin(decoded.ownerId)) {
+    return res.status(403).json({
+      success: false,
+      error: 'Admin access required'
+    });
+  }
+
+  const adminInfo = admin.getAdminByOwnerId(decoded.ownerId);
+  req.body.adminId = adminInfo!.id;
+  req.body.adminOwnerId = decoded.ownerId;
   req.body.adminEmail = decoded.email;
+  req.body.adminRole = adminInfo!.role;
+  next();
+}
+
+/**
+ * Super admin only middleware (must be used after adminAuth)
+ */
+function superAdminOnly(req: Request, res: Response, next: Function) {
+  if (req.body.adminRole !== 'super_admin') {
+    return res.status(403).json({
+      success: false,
+      error: 'Super admin access required'
+    });
+  }
   next();
 }
 
@@ -375,6 +397,123 @@ router.get('/audit', adminAuth, (req: Request, res: Response) => {
     res.json({
       success: true,
       logs
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ============== ADMIN MANAGEMENT (Super Admin Only) ==============
+
+/**
+ * GET /api/admin/admins
+ * List all admins (super_admin only)
+ */
+router.get('/admins', adminAuth, superAdminOnly, (req: Request, res: Response) => {
+  try {
+    const adminsList = admin.getAllAdminsWithOwnerInfo();
+
+    res.json({
+      success: true,
+      admins: adminsList
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/admins
+ * Create a new admin (super_admin only)
+ */
+router.post('/admins', adminAuth, superAdminOnly, (req: Request, res: Response) => {
+  try {
+    const { ownerId, role } = req.body;
+
+    if (!ownerId || !role) {
+      return res.status(400).json({
+        success: false,
+        error: 'ownerId and role are required'
+      });
+    }
+
+    if (!['super_admin', 'admin'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid role. Must be super_admin or admin'
+      });
+    }
+
+    const result = admin.createAdmin(ownerId, role, req.body.adminId);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: result.error
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      admin: result.admin,
+      message: 'Admin created successfully'
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/admin/admins/:id
+ * Delete an admin (super_admin only)
+ */
+router.delete('/admins/:id', adminAuth, superAdminOnly, (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = admin.deleteAdmin(id, req.body.adminId);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: result.error
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Admin deleted successfully'
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/admin/check
+ * Check admin status for current user
+ */
+router.get('/check', adminAuth, (req: Request, res: Response) => {
+  try {
+    const adminInfo = admin.getAdminByOwnerId(req.body.adminOwnerId);
+
+    res.json({
+      success: true,
+      isAdmin: true,
+      isSuperAdmin: req.body.adminRole === 'super_admin',
+      admin: adminInfo
     });
   } catch (error: any) {
     res.status(500).json({

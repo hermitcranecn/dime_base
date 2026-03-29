@@ -25,6 +25,25 @@ interface DimeGoods {
   goods: Goods
 }
 
+interface DimeTransaction {
+  id: string
+  goodsId: string
+  dimeId: string
+  purchasedBy: 'owner' | 'dime'
+  status: string
+  purchasedAt: string
+  goodsName: string
+  goodsDescription: string
+  price: number
+  goodsType: string
+}
+
+interface SpendingSummary {
+  totalSpent: number
+  dimeSpent: number
+  ownerSpent: number
+}
+
 interface Props {
   ownerId: string
   dimeId?: string
@@ -33,7 +52,10 @@ interface Props {
 export default function Marketplace({ ownerId, dimeId }: Props) {
   const [goods, setGoods] = useState<Goods[]>([])
   const [myGoods, setMyGoods] = useState<DimeGoods[]>([])
-  const [activeTab, setActiveTab] = useState<'browse' | 'inventory' | 'scope'>('browse')
+  const [activeTab, setActiveTab] = useState<'browse' | 'inventory' | 'scope' | 'spending'>('browse')
+  const [spendingFilter, setSpendingFilter] = useState<'all' | 'dime' | 'owner'>('all')
+  const [dimeTransactions, setDimeTransactions] = useState<DimeTransaction[]>([])
+  const [spendingSummary, setSpendingSummary] = useState<SpendingSummary>({ totalSpent: 0, dimeSpent: 0, ownerSpent: 0 })
   const [loading, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [scope, setScope] = useState<any>(null)
@@ -44,6 +66,7 @@ export default function Marketplace({ ownerId, dimeId }: Props) {
     if (dimeId) {
       fetchMyGoods()
       fetchScope()
+      fetchDimeSpending()
     }
   }, [dimeId])
 
@@ -81,6 +104,22 @@ export default function Marketplace({ ownerId, dimeId }: Props) {
       if (data.success) setScope(data.data)
     } catch (err) {
       console.error('Failed to fetch scope:', err)
+    }
+  }
+
+  const fetchDimeSpending = async () => {
+    if (!dimeId) return
+    try {
+      const res = await fetch(`${API_BASE}/marketplace/dimes/${dimeId}/transactions`, {
+        headers: { 'x-owner-id': ownerId }
+      })
+      const data = await res.json()
+      if (data.success) {
+        setDimeTransactions(data.data || [])
+        setSpendingSummary(data.summary || { totalSpent: 0, dimeSpent: 0, ownerSpent: 0 })
+      }
+    } catch (err) {
+      console.error('Failed to fetch dime spending:', err)
     }
   }
 
@@ -176,6 +215,11 @@ export default function Marketplace({ ownerId, dimeId }: Props) {
             DimeScope
           </button>
         )}
+        {dimeId && (
+          <button className={`tab ${activeTab === 'spending' ? 'active' : ''}`} onClick={() => { setActiveTab('spending'); fetchDimeSpending(); }}>
+            Dime Spending
+          </button>
+        )}
       </div>
 
       {activeTab === 'browse' && (
@@ -268,6 +312,86 @@ export default function Marketplace({ ownerId, dimeId }: Props) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'spending' && (
+        <div className="spending-panel">
+          <div className="spending-summary glass-panel">
+            <h2>Dime Spending Tracker</h2>
+            <p className="spending-desc">Track what your dime has purchased</p>
+
+            <div className="spending-stats">
+              <div className="spending-stat">
+                <label>Total Spent</label>
+                <span className="stat-value spending-total">{spendingSummary.totalSpent}</span>
+                <span className="stat-currency">vCoin</span>
+              </div>
+              <div className="spending-stat dime">
+                <label>Dime Purchases</label>
+                <span className="stat-value">{spendingSummary.dimeSpent}</span>
+                <span className="stat-currency">vCoin</span>
+              </div>
+              <div className="spending-stat owner">
+                <label>Owner Purchases</label>
+                <span className="stat-value">{spendingSummary.ownerSpent}</span>
+                <span className="stat-currency">vCoin</span>
+              </div>
+            </div>
+
+            <div className="spending-filters">
+              <button
+                className={`filter-btn ${spendingFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setSpendingFilter('all')}
+              >
+                All Purchases
+              </button>
+              <button
+                className={`filter-btn ${spendingFilter === 'dime' ? 'active' : ''}`}
+                onClick={() => setSpendingFilter('dime')}
+              >
+                Dime Purchases
+              </button>
+              <button
+                className={`filter-btn ${spendingFilter === 'owner' ? 'active' : ''}`}
+                onClick={() => setSpendingFilter('owner')}
+              >
+                Owner Purchases
+              </button>
+            </div>
+          </div>
+
+          <div className="transactions-list">
+            {dimeTransactions.length === 0 ? (
+              <div className="empty-state glass-panel">
+                <p>No purchases yet. Browse the marketplace to get started!</p>
+              </div>
+            ) : (
+              dimeTransactions
+                .filter(t => spendingFilter === 'all' || t.purchasedBy === spendingFilter)
+                .map(transaction => (
+                  <div key={transaction.id} className={`transaction-item glass-panel ${transaction.purchasedBy}`}>
+                    <div className="transaction-icon">{getGoodsIcon(transaction.goodsType)}</div>
+                    <div className="transaction-info">
+                      <h3>{transaction.goodsName}</h3>
+                      <p className="transaction-desc">{transaction.goodsDescription}</p>
+                      <p className="transaction-date">
+                        {new Date(transaction.purchasedAt).toLocaleDateString()} at{' '}
+                        {new Date(transaction.purchasedAt).toLocaleTimeString()}
+                      </p>
+                    </div>
+                    <div className="transaction-meta">
+                      <span className={`purchaser-badge ${transaction.purchasedBy}`}>
+                        {transaction.purchasedBy === 'dime' ? 'Dime' : 'Owner'}
+                      </span>
+                      <span className="transaction-price">
+                        {transaction.price} <span className="currency">vCoin</span>
+                      </span>
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
         </div>
       )}
 

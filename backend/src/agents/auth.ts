@@ -225,3 +225,284 @@ export function authenticateRequest(authHeader: string | undefined): { ownerId: 
 
   return { ownerId: decoded.ownerId, email: decoded.email };
 }
+
+// ============== ADMIN MANAGEMENT ==============
+
+export interface Admin {
+  id: string;
+  ownerId: string;
+  role: 'super_admin' | 'admin';
+  tokenHash?: string;
+  createdAt: string;
+  createdBy?: string;
+}
+
+function ensureAdminTables(): void {
+  const db = getDb();
+  try {
+    db.exec("SELECT id FROM admins WHERE id = 'init_check'");
+  } catch (e) {
+    // Table doesn't exist yet, create it
+    db.run(`
+      CREATE TABLE IF NOT EXISTS admins (
+        id TEXT PRIMARY KEY,
+        owner_id TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('super_admin', 'admin')),
+        token_hash TEXT,
+        created_at TEXT NOT NULL,
+        created_by TEXT,
+        FOREIGN KEY (owner_id) REFERENCES owners(id),
+        FOREIGN KEY (created_by) REFERENCES admins(id)
+      )
+    `);
+    saveDatabase();
+  }
+}
+
+/**
+ * Check if any admins exist (for first-time setup)
+ */
+export function hasAdmins(): boolean {
+  ensureAdminTables();
+  const db = getDb();
+  const result = db.exec("SELECT id FROM admins LIMIT 1");
+  return result.length > 0 && result[0].values.length > 0;
+}
+
+/**
+ * Get admin by owner ID
+ */
+export function getAdminByOwnerId(ownerId: string): Admin | null {
+  ensureAdminTables();
+  const db = getDb();
+  const result = db.exec(
+    "SELECT id, owner_id, role, token_hash, created_at, created_by FROM admins WHERE owner_id = ?",
+    [ownerId]
+  );
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    return null;
+  }
+
+  const row = result[0].values[0];
+  return {
+    id: row[0] as string,
+    ownerId: row[1] as string,
+    role: row[2] as 'super_admin' | 'admin',
+    tokenHash: row[3] as string | undefined,
+    createdAt: row[4] as string,
+    createdBy: row[5] as string | undefined
+  };
+}
+
+/**
+ * Get admin by admin ID
+ */
+export function getAdminById(adminId: string): Admin | null {
+  ensureAdminTables();
+  const db = getDb();
+  const result = db.exec(
+    "SELECT id, owner_id, role, token_hash, created_at, created_by FROM admins WHERE id = ?",
+    [adminId]
+  );
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    return null;
+  }
+
+  const row = result[0].values[0];
+  return {
+    id: row[0] as string,
+    ownerId: row[1] as string,
+    role: row[2] as 'super_admin' | 'admin',
+    tokenHash: row[3] as string | undefined,
+    createdAt: row[4] as string,
+    createdBy: row[5] as string | undefined
+  };
+}
+
+/**
+ * Get all admins
+ */
+export function getAllAdmins(): Admin[] {
+  ensureAdminTables();
+  const db = getDb();
+  const result = db.exec("SELECT id, owner_id, role, token_hash, created_at, created_by FROM admins");
+
+  if (result.length === 0) {
+    return [];
+  }
+
+  return result[0].values.map((row: any[]) => ({
+    id: row[0] as string,
+    ownerId: row[1] as string,
+    role: row[2] as 'super_admin' | 'admin',
+    tokenHash: row[3] as string | undefined,
+    createdAt: row[4] as string,
+    createdBy: row[5] as string | undefined
+  }));
+}
+
+/**
+ * Create the first super_admin (root) - can only be called once
+ * Returns the one-time root token (never stored, only shown once)
+ */
+export function createRootAdmin(ownerId: string, email: string): { success: boolean; rootToken?: string; error?: string } {
+  ensureAdminTables();
+
+  // Check if any admins exist
+  if (hasAdmins()) {
+    return { success: false, error: 'Root admin already exists. Use admin login to manage.' };
+  }
+
+  const db = getDb();
+  const adminId = crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  // Generate one-time root token
+  const rootToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rootToken).digest('hex');
+
+  db.run(
+    `INSERT INTO admins (id, owner_id, role, token_hash, created_at, created_by)
+     VALUES (?, ?, ?, ?, ?, NULL)`,
+    [adminId, ownerId, 'super_admin', tokenHash, now]
+  );
+
+  saveDatabase();
+
+  // Return the plain root token (it's only shown once)
+  return { success: true, rootToken };
+}
+
+/**
+ * Verify root token (one-time use)
+ * Returns admin ID if valid, null if invalid or already used
+ */
+export function verifyRootToken(token: string): string | null {
+  ensureAdminTables();
+  const db = getDb();
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+  const result = db.exec(
+    "SELECT id, token_hash FROM admins WHERE role = 'super_admin' AND token_hash IS NOT NULL",
+  );
+
+  if (result.length === 0 || result[0].values.length === 0) {
+    return null;
+  }
+
+  const row = result[0].values[0];
+  const storedHash = row[1] as string;
+
+  if (storedHash === tokenHash) {
+    // Token is valid - clear it (one-time use)
+    const adminId = row[0] as string;
+    db.run("UPDATE admins SET token_hash = NULL WHERE id = ?", [adminId]);
+    saveDatabase();
+    return adminId;
+  }
+
+  return null;
+}
+
+/**
+ * Create a new admin (super_admin only)
+ */
+export function createAdmin(
+  ownerId: string,
+  role: 'super_admin' | 'admin',
+  createdBy: string
+): { success: boolean; admin?: Admin; error?: string } {
+  ensureAdminTables();
+
+  // Check if requester is super_admin
+  const creator = getAdminById(createdBy);
+  if (!creator || creator.role !== 'super_admin') {
+    return { success: false, error: 'Only super_admin can create admins' };
+  }
+
+  // Check if owner already has an admin role
+  const existing = getAdminByOwnerId(ownerId);
+  if (existing) {
+    return { success: false, error: 'Owner already has an admin role' };
+  }
+
+  const db = getDb();
+  const adminId = crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  db.run(
+    `INSERT INTO admins (id, owner_id, role, token_hash, created_at, created_by)
+     VALUES (?, ?, ?, NULL, ?, ?)`,
+    [adminId, ownerId, role, now, createdBy]
+  );
+
+  saveDatabase();
+
+  return {
+    success: true,
+    admin: {
+      id: adminId,
+      ownerId,
+      role,
+      createdAt: now,
+      createdBy
+    }
+  };
+}
+
+/**
+ * Delete an admin (super_admin only, cannot delete self)
+ */
+export function deleteAdmin(adminId: string, deletedBy: string): { success: boolean; error?: string } {
+  ensureAdminTables();
+
+  // Check if requester is super_admin
+  const deleter = getAdminById(deletedBy);
+  if (!deleter || deleter.role !== 'super_admin') {
+    return { success: false, error: 'Only super_admin can delete admins' };
+  }
+
+  // Cannot delete self
+  if (adminId === deletedBy) {
+    return { success: false, error: 'Cannot delete yourself' };
+  }
+
+  // Check if target admin exists
+  const target = getAdminById(adminId);
+  if (!target) {
+    return { success: false, error: 'Admin not found' };
+  }
+
+  // Cannot delete the last super_admin
+  if (target.role === 'super_admin') {
+    const allSuperAdmins = getAllAdmins().filter(a => a.role === 'super_admin');
+    if (allSuperAdmins.length <= 1) {
+      return { success: false, error: 'Cannot delete the last super_admin' };
+    }
+  }
+
+  const db = getDb();
+  db.run("DELETE FROM admins WHERE id = ?", [adminId]);
+  saveDatabase();
+
+  return { success: true };
+}
+
+/**
+ * Check if requester is admin (any role)
+ */
+export function isAdmin(ownerId: string): boolean {
+  const admin = getAdminByOwnerId(ownerId);
+  return admin !== null;
+}
+
+/**
+ * Check if requester is super_admin
+ */
+export function isSuperAdmin(ownerId: string): boolean {
+  const admin = getAdminByOwnerId(ownerId);
+  return admin !== null && admin.role === 'super_admin';
+}

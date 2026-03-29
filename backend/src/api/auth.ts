@@ -10,6 +10,19 @@ import * as auth from '../agents/auth';
 const router = Router();
 
 /**
+ * GET /api/auth/check-admins
+ * Check if any admins exist (for admin dashboard initialization)
+ */
+router.get('/check-admins', (req: Request, res: Response) => {
+  try {
+    const adminsExist = auth.hasAdmins();
+    res.json({ success: true, adminsExist });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/auth/register
  * Register a new owner
  */
@@ -142,6 +155,72 @@ router.post('/logout', (req: Request, res: Response) => {
     }
 
     res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/auth/init-root
+ * First-time setup: create owner + super_admin, returns one-time root token
+ * Can only be called once when no admins exist
+ */
+router.post('/init-root', (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and password are required'
+      });
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email format'
+      });
+    }
+
+    // Check if root admin already exists
+    if (auth.hasAdmins()) {
+      return res.status(403).json({
+        success: false,
+        error: 'System already initialized. Use regular login to access admin features.'
+      });
+    }
+
+    // Register the owner
+    const registerResult = auth.register(email, password);
+    if (!registerResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: registerResult.error
+      });
+    }
+
+    // Create root admin
+    const rootResult = auth.createRootAdmin(registerResult.owner!.id, email);
+    if (!rootResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: rootResult.error
+      });
+    }
+
+    // Return the one-time root token (NEVER stored in frontend)
+    res.status(201).json({
+      success: true,
+      message: 'Root admin created successfully. Save your root token - it will never be shown again!',
+      rootToken: rootResult.rootToken,
+      owner: {
+        id: registerResult.owner!.id,
+        email: registerResult.owner!.email
+      }
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

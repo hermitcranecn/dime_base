@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import './pages.css'
 
 const API_BASE = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api`
@@ -25,15 +26,6 @@ interface SkillParameter {
   description?: string
 }
 
-interface EquippedSkill {
-  id: string
-  goodsId: string
-  skillId: string
-  status: string
-  config: any
-  skill: Skill
-}
-
 interface Props {
   ownerId: string
   dimeId?: string
@@ -41,15 +33,12 @@ interface Props {
 
 export default function Skills({ ownerId, dimeId }: Props) {
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([])
-  const [equippedSkills, setEquippedSkills] = useState<EquippedSkill[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null)
-  const [configValues, setConfigValues] = useState<Record<string, string>>({})
 
   useEffect(() => {
     fetchSkills()
-    if (dimeId) fetchEquippedSkills()
-  }, [dimeId])
+  }, [])
 
   const fetchSkills = async () => {
     try {
@@ -73,38 +62,6 @@ export default function Skills({ ownerId, dimeId }: Props) {
     setLoading(false)
   }
 
-  const fetchEquippedSkills = async () => {
-    if (!dimeId) return
-    try {
-      const res = await fetch(`${API_BASE}/marketplace/dimes/${dimeId}/equipped`, {
-        headers: { 'x-owner-id': ownerId }
-      })
-      const data = await res.json()
-      if (data.success) {
-        setEquippedSkills(data.data || [])
-      }
-    } catch (err) {
-      console.error('Failed to fetch equipped skills:', err)
-    }
-  }
-
-  const configureSkill = async (skillId: string, config: Record<string, any>) => {
-    try {
-      const res = await fetch(`${API_BASE}/marketplace/dime-goods/${skillId}/config`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-owner-id': ownerId },
-        body: JSON.stringify({ config })
-      })
-      const data = await res.json()
-      if (data.success) {
-        alert('Configuration saved!')
-        fetchEquippedSkills()
-      }
-    } catch (err) {
-      console.error('Failed to configure:', err)
-    }
-  }
-
   const getSkillIcon = (skillName: string) => {
     const name = skillName.toLowerCase()
     if (name.includes('weather')) return '🌤️'
@@ -123,35 +80,17 @@ export default function Skills({ ownerId, dimeId }: Props) {
   return (
     <div className="page skills">
       <div className="page-header">
-        <h1>Skills</h1>
-        <p className="subtitle">Configure your dime's abilities</p>
+        <h1>Skills Marketplace</h1>
+        <p className="subtitle">Browse and manage your dime's abilities</p>
       </div>
 
-      {dimeId && equippedSkills.length > 0 && (
-        <section className="skills-section">
-          <h2>Equipped Skills</h2>
-          <div className="equipped-grid">
-            {equippedSkills.map(es => (
-              <div key={es.id} className="equipped-card glass-panel">
-                <div className="skill-icon large">{getSkillIcon(es.skill?.name || '')}</div>
-                <div className="equipped-info">
-                  <h3>{es.skill?.name}</h3>
-                  <span className={`status ${es.status}`}>{es.status}</span>
-                </div>
-                <button
-                  className="btn-secondary btn-small"
-                  onClick={() => {
-                    setSelectedSkill(es.skill)
-                    setConfigValues(es.config || {})
-                  }}
-                >
-                  Configure
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <div className="skills-info-banner glass-panel">
+        <div className="info-icon">💡</div>
+        <div className="info-content">
+          <h3>Manage Equipped Skills in Config</h3>
+          <p>To configure equipped skills, go to the <Link to="/config">Dime Configuration</Link> page.</p>
+        </div>
+      </div>
 
       <section className="skills-section">
         <h2>Available Skills</h2>
@@ -160,7 +99,7 @@ export default function Skills({ ownerId, dimeId }: Props) {
         {availableSkills.length === 0 ? (
           <div className="empty-state glass-panel">
             <div className="empty-icon">🛒</div>
-            <p>No skills available yet. Check the marketplace!</p>
+            <p>No skills available yet. Check back later!</p>
           </div>
         ) : (
           <div className="skills-grid">
@@ -168,10 +107,7 @@ export default function Skills({ ownerId, dimeId }: Props) {
               <div
                 key={skill.id}
                 className="skill-card glass-panel"
-                onClick={() => {
-                  setSelectedSkill(skill)
-                  setConfigValues({})
-                }}
+                onClick={() => setSelectedSkill(skill)}
               >
                 <div className="skill-icon">{getSkillIcon(skill.name)}</div>
                 <div className="skill-info">
@@ -215,19 +151,13 @@ export default function Skills({ ownerId, dimeId }: Props) {
 
             {selectedSkill.parameters.length > 0 && (
               <div className="params-section">
-                <h4>Configuration Parameters</h4>
+                <h4>Parameters</h4>
                 {selectedSkill.parameters.map((param, i) => (
                   <div key={i} className="param-row">
                     <label>
                       {param.name}
                       {param.required && <span className="required">*</span>}
                     </label>
-                    <input
-                      type="text"
-                      placeholder={param.default || param.description || param.name}
-                      value={configValues[param.name] || param.default || ''}
-                      onChange={e => setConfigValues({ ...configValues, [param.name]: e.target.value })}
-                    />
                     <span className="param-hint">{param.description}</span>
                   </div>
                 ))}
@@ -235,14 +165,11 @@ export default function Skills({ ownerId, dimeId }: Props) {
             )}
 
             <div className="modal-actions">
-              <button className="btn-secondary" onClick={() => setSelectedSkill(null)}>Cancel</button>
+              <button className="btn-secondary" onClick={() => setSelectedSkill(null)}>Close</button>
               {dimeId && (
-                <button
-                  className="btn-primary"
-                  onClick={() => configureSkill(selectedSkill.id, configValues)}
-                >
-                  Save Configuration
-                </button>
+                <Link to="/marketplace" className="btn-primary" style={{display: 'inline-block', textDecoration: 'none'}}>
+                  Get from Marketplace
+                </Link>
               )}
             </div>
           </div>

@@ -161,12 +161,13 @@ router.post('/:dimeId/decide', async (req: Request, res: Response) => {
 });
 
 router.get('/', (req: Request, res: Response) => {
-  const ownerId = req.headers['x-owner-id'] as string;
-  
-  if (ownerId !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required', code: 'NOT_AUTHORIZED' });
+  const authHeader = req.headers.authorization;
+
+  // Allow if has valid JWT auth
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(403).json({ error: 'Authentication required', code: 'NOT_AUTHENTICATED' });
   }
-  
+
   const result = listAllDimes();
   res.json(result.data || []);
 });

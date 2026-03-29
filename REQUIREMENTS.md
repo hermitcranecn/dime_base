@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Version** | 1.4 |
-| **Date** | 2026-03-29 |
+| **Version** | 1.6 |
+| **Date** | 2026-03-30 |
 | **Status** | Requirements Specification |
 | **Owner** | dime_base Team |
 
@@ -54,21 +54,22 @@
 | MVP-11 | Owner Registration | Email/password auth with JWT | ✅ |
 | MVP-12 | RAG Knowledge Base | Local embedding-based knowledge retrieval | ✅ |
 
-### 2.2 In Progress
+### 2.2 Implemented Features (v1.5)
 
 | ID | Feature | Description | Status |
 |----|---------|-------------|--------|
-| REG-1 | Dime Configuration | Owner-configurable LLM, tone, mode | Implementation |
+| REG-1 | Dime Configuration | Owner-configurable LLM, tone, mode, privacy | ✅ |
+| PLAN-1 | D2D Communication | Dime-to-Dime chat, conversation recording, browse dimes | ✅ |
+| PLAN-2 | Admin Dashboard | System config, playground management, monitoring | ✅ |
+| PLAN-3 | Dime Skills | Skill publishing, marketplace integration, equipping | ✅ |
+| PLAN-4 | Super Admin | Root token system, admin role management | ✅ |
 
 ### 2.3 Planned Features
 
 | ID | Feature | Description | Priority |
 |----|---------|-------------|----------|
-| PLAN-1 | D2D Communication | Dime-to-Dime chat, conversation recording | Critical |
-| PLAN-2 | Admin Dashboard | System config, playground management, monitoring | High |
-| PLAN-3 | Dime Skills | Skill publishing, services for credit | High |
-| PLAN-4 | Persistent Memory | Long-term memory with SQLite | High |
-| PLAN-5 | iOS App | Owner-Dime mobile channel | Medium |
+| PLAN-5 | Persistent Memory | Long-term memory with SQLite | High |
+| PLAN-6 | IM Channel Integration | Feishu/Telegram/WeChat as primary owner-dime interface | High |
 
 ### 2.4 Future Considerations
 
@@ -78,7 +79,6 @@
 | FUT-2 | Rate Limiting | High |
 | FUT-3 | Third-Party SDK | Medium |
 | FUT-4 | Wearable Integration (ZeroClaw) | Medium |
-| FUT-5 | External IM Integration (Telegram, WeChat) | Medium |
 | FUT-6 | Real Payment Gateway | Medium |
 | FUT-7 | Horizontal Scaling (Redis, K8s) | Medium |
 
@@ -169,26 +169,30 @@
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-Auth.1 | Owners register with email OR phone + password | Critical | 🔲 |
-| FR-Auth.2 | Owner receives unique Owner ID (format: OWN-XXXXXXXX) | Critical | 🔲 |
-| FR-Auth.3 | Owner logs in with credentials and receives JWT | Critical | 🔲 |
+| FR-Auth.1 | Owners register via IM channel (Feishu first) — no email/password required | Critical | 🔲 |
+| FR-Auth.2 | Owner receives unique Owner ID (UUID) | Critical | 🔲 |
+| FR-Auth.3 | Owner identity is their IM platform user ID (e.g., Feishu open_id) | Critical | 🔲 |
 | FR-Auth.4 | One Owner ID maps to one Dime | Critical | 🔲 |
-| FR-Auth.5 | Existing owners (unauthenticated) continue working | High | 🔲 |
+| FR-Auth.5 | Web login via Feishu OAuth (for admin/config access) | High | 🔲 |
+| FR-Auth.6 | Channel-first: Feishu is primary owner experience | Critical | 🔲 |
 
 **Owner Identity:**
 
 | Field | Type | Constraints |
 |-------|------|-------------|
-| id | string | Format: OWN-XXXXXXXX (UUID-like) |
-| email | string | Nullable, unique if provided |
-| phone | string | Nullable, unique if provided |
-| passwordHash | string | bcrypt hashed |
+| id | string | UUID v4 |
 | createdAt | timestamp | Auto-generated |
+| email | string | Nullable (fallback only) |
+| passwordHash | string | Nullable (fallback only) |
 
-**Authentication Flow:**
-1. **Register**: POST `/api/auth/register` with `{email|phone, password}` → returns Owner ID
-2. **Login**: POST `/api/auth/login` with `{email|phone, password}` → returns JWT
+**Authentication Flow (Channel-First):**
+1. **New Owner via Feishu**: Owner sends message to dime_base bot → owner + dime auto-created → onboarding via conversation
+2. **Web Login**: Owner clicks "Login with Feishu" → Feishu OAuth → JWT issued
 3. **Use API**: Include `Authorization: Bearer <jwt>` header for authenticated requests
+
+**Channel Linking:**
+- One owner = one IM channel (one owner, one dime, one channel)
+- If owner registers via Telegram later = treated as new owner with new dime
 
 ### 4.3 Decision Mechanism
 
@@ -273,12 +277,12 @@ interface DecisionBoundary {
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-DimeCfg.1 | Owner can select LLM backend (DeepSeek, OpenAI, Anthropic) | Critical | 🔲 |
-| FR-DimeCfg.2 | Owner can configure response tone (formal, casual, playful) | High | 🔲 |
-| FR-DimeCfg.3 | Owner can configure communication mode (verbose, brief, balanced) | High | 🔲 |
+| FR-DimeCfg.1 | Owner can select LLM backend (DeepSeek, OpenAI, Anthropic) | Critical | ✅ |
+| FR-DimeCfg.2 | Owner can configure response tone (formal, casual, playful) | High | ✅ |
+| FR-DimeCfg.3 | Owner can configure communication mode (verbose, brief, balanced) | High | ✅ |
 | FR-DimeCfg.4 | Owner can set default language | Medium | 🔲 |
 | FR-DimeCfg.5 | Owner can configure auto-response behavior | Medium | 🔲 |
-| FR-DimeCfg.6 | Configuration changes take effect immediately | High | 🔲 |
+| FR-DimeCfg.6 | Configuration changes take effect immediately | High | ✅ |
 
 **DimeConfig Interface:**
 
@@ -298,11 +302,11 @@ interface DimeConfig {
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-D2D.1 | Dimes can search for other Dimes by name/interests | Critical | 🔲 |
-| FR-D2D.2 | Dimes can initiate 1:1 private conversations | Critical | 🔲 |
+| FR-D2D.1 | Dimes can search for other Dimes by name/interests | Critical | ✅ |
+| FR-D2D.2 | Dimes can initiate 1:1 private conversations | Critical | ✅ |
 | FR-D2D.3 | Dimes can have random "bump" conversations | High | 🔲 |
-| FR-D2D.4 | All conversations are recorded and timestamped | Critical | 🔲 |
-| FR-D2D.5 | Owners can view, search, export conversation history | Critical | 🔲 |
+| FR-D2D.4 | All conversations are recorded and timestamped | Critical | ✅ |
+| FR-D2D.5 | Owners can view, search, export conversation history | Critical | ✅ |
 | FR-D2D.6 | Dimes can request help from other Dimes | High | 🔲 |
 | FR-D2D.7 | Dimes can offer help/services to other Dimes | High | 🔲 |
 | FR-D2D.8 | Dime can decline help requests | Medium | 🔲 |
@@ -324,14 +328,16 @@ interface ConversationRecord {
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-Admin.1 | Admin dashboard (frontend) for system management | Critical | 🔲 |
-| FR-Admin.2 | Admin can manage system-wide configurations | Critical | 🔲 |
-| FR-Admin.3 | Admin can view resource usage and limits | High | 🔲 |
-| FR-Admin.4 | Admin can create and manage playgrounds | Critical | 🔲 |
-| FR-Admin.5 | Admin can view Dime activity logs | High | 🔲 |
-| FR-Admin.6 | Admin can view user/owner statistics | Medium | 🔲 |
-| FR-Admin.7 | Admin can ban/suspend Dimes or owners | High | 🔲 |
-| FR-Admin.8 | Admin backend API with role-based access | Critical | 🔲 |
+| FR-Admin.1 | Admin dashboard (frontend) for system management | Critical | ✅ |
+| FR-Admin.2 | Admin can manage system-wide configurations | Critical | ✅ |
+| FR-Admin.3 | Admin can view resource usage and limits | High | ✅ |
+| FR-Admin.4 | Admin can create and manage playgrounds | Critical | ✅ |
+| FR-Admin.5 | Admin can view Dime activity logs | High | ✅ |
+| FR-Admin.6 | Admin can view user/owner statistics | Medium | ✅ |
+| FR-Admin.7 | Admin can ban/suspend Dimes or owners | High | ✅ |
+| FR-Admin.8 | Admin backend API with role-based access | Critical | ✅ |
+| FR-Admin.9 | Super admin with one-time root token | Critical | ✅ |
+| FR-Admin.10 | Admin can manage other admins (super_admin only) | Critical | ✅ |
 
 **Admin API Endpoints:**
 
@@ -357,13 +363,14 @@ The dime has "free mind" — autonomous purchasing power within bounds set by ow
 
 | ID | Requirement | Priority | Status |
 |----|-------------|----------|--------|
-| FR-MP.1 | One unified marketplace for all digital goods | Critical | 🔲 |
-| FR-MP.2 | Owner can browse, purchase, and assign goods to dime | Critical | 🔲 |
-| FR-MP.3 | Dime can browse and purchase goods autonomously | High | 🔲 |
-| FR-MP.4 | Owner sets `DimeScope` (spending limits, category/type restrictions) | Critical | 🔲 |
-| FR-MP.5 | Purchase validation: owner = no limits, dime = check DimeScope | Critical | 🔲 |
-| FR-MP.6 | Developers can publish new digital goods | High | 🔲 |
+| FR-MP.1 | One unified marketplace for all digital goods | Critical | ✅ |
+| FR-MP.2 | Owner can browse, purchase, and assign goods to dime | Critical | ✅ |
+| FR-MP.3 | Dime can browse and purchase goods autonomously | High | ✅ |
+| FR-MP.4 | Owner sets `DimeScope` (spending limits, category/type restrictions) | Critical | ✅ |
+| FR-MP.5 | Purchase validation: owner = no limits, dime = check DimeScope | Critical | ✅ |
+| FR-MP.6 | Developers can publish new digital goods | High | ✅ |
 | FR-MP.7 | D2D gifting/selling between dimes (within owner permissions) | Medium | 🔲 |
+| FR-MP.8 | Dime spending tracker with transaction history | High | ✅ |
 
 **Goods Types:** `skill` | `icon` | `badge` | `theme` | `avatar` | `pack` | `other`
 
@@ -786,112 +793,89 @@ Environment file: `backend/.env`
 
 ---
 
-## 15. iOS App Specification
+## 15. IM Channel Integration (Primary Owner Interface)
 
 ### 15.1 Overview
 
-The iOS App serves as the primary channel between Owner and Dime, providing a native mobile experience for real-time interaction and management.
 
-### 15.2 Purpose
-
-| Benefit | Description |
-|---------|------------|
-| **Accessibility** | Access Dime from anywhere via mobile device |
-| **Real-time** | Instant notifications for Dime events and decisions |
-| **Native Experience** | Smooth, optimized UI/UX vs web app |
-| **Push Notifications** | Stay informed when Dime needs attention |
-
-### 15.3 Core Features
-
-| Feature | Description | Priority |
-|---------|------------|----------|
-| Chat Interface | Send/receive messages with Dime | Critical |
-| Decision Requests | View and approve/reject escalated decisions | Critical |
-| Dime Status | Monitor Dime activity and location | High |
-| Push Notifications | Alerts for important Dime events | High |
-| Personality Config | Adjust Dime personality settings | Medium |
-| Economy Dashboard | View vCoin balance and transactions | Medium |
-
-### 15.4 Architecture
+### 15.2 Channel Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              iOS APP                                        │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐       │
-│   │   Chat View     │    │  Decision View  │    │   Status View   │       │
-│   │                 │    │                 │    │                 │       │
-│   │ • Message list  │    │ • Pending       │    │ • Dime state   │       │
-│   │ • Input field   │    │   requests      │    │ • Location     │       │
-│   │ • Typing ind.   │    │ • Approve/     │    │ • Activity     │       │
-│   │                 │    │   Reject        │    │   log          │       │
-│   └─────────────────┘    └─────────────────┘    └─────────────────┘       │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                     Data Layer (Swift)                               │   │
-│   │                                                                      │   │
-│   │   ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │   │
-│   │   │ REST Client  │    │ WebSocket    │    │ Local Store  │       │   │
-│   │   │ (URLSession) │    │ (Starscream) │    │ (UserDefaults)│       │   │
-│   │   └──────────────┘    └──────────────┘    └──────────────┘       │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                    │                                         │
-│                                    ▼                                         │
-│                    ┌───────────────────────────────┐                       │
-│                    │     dime_base Backend API       │                       │
-│                    │     (http://host:3000)        │                       │
-│                    └───────────────────────────────┘                       │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+Owner (Feishu) ─── DM ───▶ dime_base Bot
+                               │
+                               ▼
+                    ┌──────────────────┐
+                    │     Gateway      │
+                    │  POST /webhooks/ │
+                    │      feishu      │
+                    └────────┬─────────┘
+                             │ routes to
+                             ▼
+                    ┌──────────────────┐
+                    │  MessageRouter   │
+                    │ open_id → dime   │
+                    └────────┬─────────┘
+                             │ chatWithDime()
+                             ▼
+                    ┌──────────────────┐
+                    │  Dime Service    │
+                    └──────────────────┘
 ```
 
-### 15.5 Technology Stack
+**One Feishu app for all owners**: All owners install the same dime_base bot. dime_base routes messages by `open_id`.
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Language | Swift 5.9+ | iOS development |
-| UI Framework | SwiftUI | Declarative UI |
-| Networking | URLSession | REST API calls |
-| WebSocket | Starscream | Real-time events |
-| Storage | UserDefaults | Local preferences |
-| Push | APNs | Notifications |
+### 15.3 Owner Identity Model
 
-### 15.6 API Integration
+| Concept | Detail |
+|---------|--------|
+| **Identity** | Feishu `open_id` (no email/password) |
+| **Registration** | Owner sends first message → auto-creates owner + dime |
+| **Linking** | `owner_channels` table: `open_id` → `owner_id` → `dime_id` |
+| **Web Login** | Feishu OAuth (for admin/config access) |
 
-The iOS App communicates with the backend via:
+### 15.4 Owner Features via Feishu
 
-| Protocol | Usage |
-|----------|-------|
-| REST API | CRUD operations, chat, decisions |
-| WebSocket | Real-time messaging, status updates |
-| APNs | Push notifications for escalations |
+| Feature | Via | Command |
+|---------|-----|---------|
+| Chat with dime | DM (default) | None — just talk |
+| Dime config | Feishu command | `/config`, `/config set [key] [value]` |
+| Marketplace | Feishu command | `/marketplace`, `/buy [item]`, `/sell [item]` |
+| Dime status | Feishu command | `/status` |
+| Help | Feishu command | `/help` |
 
-### 15.7 Screen Flow
+**Command detection**: Messages starting with `/` = command. Everything else = chat with dime.
 
-```
-┌─────────────┐
-│   Launch    │
-│   Screen    │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐     ┌─────────────┐
-│  Login/    │────▶│    Home     │
-│  Register  │     │  (Dime List)│
-└─────────────┘     └──────┬──────┘
-                          │
-         ┌───────────────┼───────────────┐
-         │               │               │
-         ▼               ▼               ▼
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│    Chat     │  │  Decisions  │  │  Settings   │
-│  Interface  │  │   (Pending) │  │  (Profile)  │
-└─────────────┘  └─────────────┘  └─────────────┘
+### 15.5 Supported Channels
+
+| Channel | Priority | Region | Status |
+|---------|----------|--------|--------|
+| **Feishu** | Primary | China | 🔲 |
+| Telegram | Secondary | Global | 🔲 |
+| WeChat | Future | China | 🔲 |
+
+### 15.6 Privacy
+
+| Aspect | Approach |
+|--------|----------|
+| **Short term** | Messages stored on cloud server (acceptable for MVP) |
+| **Long term** | E2E encryption, dime runs on owner's device (TBD) |
+
+### 15.7 Database Schema
+
+```sql
+CREATE TABLE owner_channels (
+  id TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL UNIQUE,
+  channel_type TEXT NOT NULL,       -- "feishu"
+  external_id TEXT NOT NULL,        -- Platform user ID (open_id)
+  external_name TEXT,
+  status TEXT DEFAULT 'active',     -- "active" | "paused" | "unlinked"
+  created_at TEXT NOT NULL,
+  last_message_at TEXT
+);
 ```
 
 ---
 
-*Document Version: 1.3*
-*Last Updated: 2026-03-26*
-*Next Review: After Phase 1 completion*
+*Document Version: 1.6*
+*Last Updated: 2026-03-30*

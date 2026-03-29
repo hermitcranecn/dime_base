@@ -1,7 +1,7 @@
 # dime_base Module Architecture
 
-**Version:** 1.0
-**Date:** 2026-03-26
+**Version:** 1.1
+**Date:** 2026-03-30
 **Status:** Architecture Reference
 
 ---
@@ -21,10 +21,16 @@
 │         ┌────────────────────┼────────────────────┐                       │
 │         ▼                    ▼                    ▼                        │
 │   ┌───────────┐        ┌───────────┐        ┌───────────┐              │
-│   │  AGENTS   │        │   WORLD   │        │  ECONOMY  │              │
-│   │  MODULE   │◀──────▶│  MODULE   │        │  MODULE   │              │
-│   └───────────┘        └───────────┘        └───────────┘              │
-│                                                                              │
+│   │  GATEWAY  │        │   WORLD   │        │  ECONOMY  │              │
+│   │  MODULE   │        │  MODULE   │        │  MODULE   │              │
+│   └─────┬─────┘        └───────────┘        └───────────┘              │
+│         │                                                               │
+│         ▼                                                               │
+│   ┌───────────┐        ┌───────────┐        ┌───────────┐              │
+│   │  AGENTS   │◀──────▶│  CHANNEL  │        │           │              │
+│   │  MODULE   │        │  MODULE   │        │           │              │
+│   └───────────┘        └───────────┘        │           │              │
+│                                              │           │              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -32,10 +38,12 @@
 
 ## 2. Module Breakdown
 
-dime_base has **3 core modules** + **1 frontend**:
+dime_base has **5 core modules** + **1 frontend**:
 
 | Module | Purpose | Main Files |
 |--------|---------|------------|
+| **Gateway** | IM channel integration (webhooks, routing) | `gateway/index.ts`, `gateway/router.ts` |
+| **Channel** | Channel adapter interface (Feishu, Telegram) | `channels/adapter.ts`, `channels/registry.ts`, `channels/feishu.ts` |
 | **Agents** | Digital person AI | `dime.ts`, `service.ts`, `llm.ts` |
 | **World** | Virtual playgrounds | `world.ts` |
 | **Economy** | vCoin transactions | `economy.ts` |
@@ -389,10 +397,21 @@ dime_base/
 │       │   ├── service.ts       # Business: createDime, chat, decide
 │       │   └── llm.ts           # External: DeepSeek API integration
 │       │
+│       ├── channels/
+│       │   ├── adapter.ts       # ChannelAdapter interface
+│       │   ├── registry.ts      # ChannelRegistry
+│       │   └── feishu.ts       # Feishu adapter
+│       │
+│       ├── gateway/
+│       │   ├── index.ts         # Gateway class
+│       │   └── router.ts        # MessageRouter
+│       │
 │       ├── api/
 │       │   ├── agents.ts        # REST routes: /api/agents/*
 │       │   ├── world.ts         # REST routes: /api/world/*
-│       │   └── economy.ts        # REST routes: /api/economy/*
+│       │   ├── economy.ts        # REST routes: /api/economy/*
+│       │   ├── webhooks.ts      # IM channel webhooks
+│       │   └── auth.ts          # Auth routes (incl. Feishu OAuth)
 │       │
 │       └── (in-memory stores)
 │
@@ -423,5 +442,5 @@ dime_base/
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: 2026-03-26*
+*Document Version: 1.1*
+*Last Updated: 2026-03-30*

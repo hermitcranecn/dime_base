@@ -32,15 +32,19 @@ interface Props {
   ownerId: string
 }
 
+type ViewMode = 'channels' | 'dimes'
+
 export default function D2DChat({ myDimeId, ownerId }: Props) {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [channels, setChannels] = useState<Channel[]>([])
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [otherDimes, setOtherDimes] = useState<Dime[]>([])
+  const [allDimes, setAllDimes] = useState<Dime[]>([])
   const [input, setInput] = useState('')
   const [showNewChannel, setShowNewChannel] = useState(false)
   const [selectedDimeB, setSelectedDimeB] = useState('')
+  const [viewMode, setViewMode] = useState<ViewMode>('channels')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -59,6 +63,7 @@ export default function D2DChat({ myDimeId, ownerId }: Props) {
   useEffect(() => {
     fetchChannels()
     fetchOtherDimes()
+    fetchAllDimes()
   }, [myDimeId])
 
   useEffect(() => {
@@ -99,6 +104,18 @@ export default function D2DChat({ myDimeId, ownerId }: Props) {
     }
   }
 
+  const fetchAllDimes = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/agents`)
+      const data = await res.json()
+      if (data.success) {
+        setAllDimes((data.data || []).filter((d: Dime) => d.id !== myDimeId))
+      }
+    } catch (err) {
+      console.error('Failed to fetch all dimes:', err)
+    }
+  }
+
   const fetchMessages = async (channelId: string) => {
     try {
       const res = await fetch(`${API_BASE}/d2d/channels/${channelId}/messages`, {
@@ -127,6 +144,24 @@ export default function D2DChat({ myDimeId, ownerId }: Props) {
         setSelectedChannel(data.data)
         setShowNewChannel(false)
         setSelectedDimeB('')
+      }
+    } catch (err) {
+      console.error('Failed to create channel:', err)
+    }
+  }
+
+  const createChannelAndNavigate = async (targetDimeId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/d2d/channels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-owner-id': ownerId },
+        body: JSON.stringify({ dimeAId: myDimeId, dimeBId: targetDimeId })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setChannels(prev => [...prev, data.data])
+        setSelectedChannel(data.data)
+        setViewMode('channels')
       }
     } catch (err) {
       console.error('Failed to create channel:', err)
@@ -172,7 +207,22 @@ export default function D2DChat({ myDimeId, ownerId }: Props) {
             <button className="btn-icon" onClick={() => setShowNewChannel(true)}>+</button>
           </div>
 
-          {showNewChannel && (
+          <div className="d2d-tabs">
+            <button
+              className={`tab ${viewMode === 'channels' ? 'active' : ''}`}
+              onClick={() => setViewMode('channels')}
+            >
+              My Dime
+            </button>
+            <button
+              className={`tab ${viewMode === 'dimes' ? 'active' : ''}`}
+              onClick={() => setViewMode('dimes')}
+            >
+              All Dimes
+            </button>
+          </div>
+
+          {viewMode === 'channels' && showNewChannel && (
             <div className="new-channel-form">
               <select value={selectedDimeB} onChange={e => setSelectedDimeB(e.target.value)}>
                 <option value="">Select dime...</option>
@@ -187,29 +237,56 @@ export default function D2DChat({ myDimeId, ownerId }: Props) {
             </div>
           )}
 
-          <div className="channel-list">
-            {channels.length === 0 ? (
-              <p className="empty-state">No channels yet</p>
-            ) : (
-              channels.map(channel => (
-                <div
-                  key={channel.id}
-                  className={`channel-item ${selectedChannel?.id === channel.id ? 'active' : ''}`}
-                  onClick={() => setSelectedChannel(channel)}
-                >
-                  <div className="channel-avatar">
-                    {getDimeName(channel.dimeAId === myDimeId ? channel.dimeBId : channel.dimeAId)[0]}
+          {viewMode === 'channels' ? (
+            <div className="channel-list">
+              {channels.length === 0 ? (
+                <p className="empty-state">No channels yet</p>
+              ) : (
+                channels.map(channel => (
+                  <div
+                    key={channel.id}
+                    className={`channel-item ${selectedChannel?.id === channel.id ? 'active' : ''}`}
+                    onClick={() => setSelectedChannel(channel)}
+                  >
+                    <div className="channel-avatar">
+                      {getDimeName(channel.dimeAId === myDimeId ? channel.dimeBId : channel.dimeAId)[0]}
+                    </div>
+                    <div className="channel-info">
+                      <span className="channel-name">
+                        {getDimeName(channel.dimeAId === myDimeId ? channel.dimeBId : channel.dimeAId)}
+                      </span>
+                      <span className="channel-status">{channel.status}</span>
+                    </div>
                   </div>
-                  <div className="channel-info">
-                    <span className="channel-name">
-                      {getDimeName(channel.dimeAId === myDimeId ? channel.dimeBId : channel.dimeAId)}
-                    </span>
-                    <span className="channel-status">{channel.status}</span>
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="dimes-list">
+              {allDimes.length === 0 ? (
+                <p className="empty-state">No dimes found</p>
+              ) : (
+                allDimes.map(dime => (
+                  <div
+                    key={dime.id}
+                    className="dime-item"
+                    onClick={() => createChannelAndNavigate(dime.id)}
+                  >
+                    <div className="dime-avatar">
+                      {dime.name[0]}
+                    </div>
+                    <div className="dime-info">
+                      <span className="dime-name">{dime.name}</span>
+                      <span className="dime-owner">Owner: {dime.ownerId.slice(0, 8)}...</span>
+                    </div>
+                    <div className="dime-status">
+                      <span className={`status-dot ${dime.status}`}></span>
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         <div className="chat-area glass-panel">

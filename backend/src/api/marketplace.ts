@@ -243,6 +243,105 @@ router.get('/my', (req: Request, res: Response) => {
   });
 });
 
+// Get dime's purchase transactions
+router.get('/dimes/:dimeId/transactions', (req: Request, res: Response) => {
+  const { dimeId } = req.params;
+  const ownerId = req.headers['x-owner-id'] as string;
+
+  if (!ownerId) {
+    return res.status(400).json({
+      success: false,
+      error: 'x-owner-id header required',
+      code: 'INVALID_INPUT'
+    });
+  }
+
+  // Verify ownership
+  const db = getDb();
+  const dimeResult = db.exec("SELECT owner_id FROM dimes WHERE id = ?", [dimeId]);
+  if (dimeResult.length === 0 || dimeResult[0].values.length === 0) {
+    return res.status(404).json({
+      success: false,
+      error: 'Dime not found',
+      code: 'NOT_FOUND'
+    });
+  }
+
+  const dimeOwnerId = dimeResult[0].values[0][0] as string;
+  if (dimeOwnerId !== ownerId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Not authorized to access this dime',
+      code: 'NOT_AUTHORIZED'
+    });
+  }
+
+  // Query dime_goods joined with digital_goods to get transaction history
+  const transactionsResult = db.exec(`
+    SELECT
+      dg.id,
+      dg.goods_id,
+      dg.dime_id,
+      dg.purchased_by,
+      dg.status,
+      dg.purchased_at,
+      dg.name,
+      dg.description,
+      dg.price,
+      dg.type as goods_type
+    FROM dime_goods dg
+    JOIN digital_goods dg2 ON dg.goods_id = dg2.id
+    WHERE dg.dime_id = ?
+    ORDER BY dg.purchased_at DESC
+  `, [dimeId]);
+
+  if (transactionsResult.length === 0) {
+    return res.json({
+      success: true,
+      data: [],
+      count: 0,
+      summary: {
+        totalSpent: 0,
+        dimeSpent: 0,
+        ownerSpent: 0
+      }
+    });
+  }
+
+  const transactions = transactionsResult[0].values.map((row: any[]) => ({
+    id: row[0],
+    goodsId: row[1],
+    dimeId: row[2],
+    purchasedBy: row[3],
+    status: row[4],
+    purchasedAt: row[5],
+    goodsName: row[6],
+    goodsDescription: row[7],
+    price: row[8],
+    goodsType: row[9]
+  }));
+
+  // Calculate summary
+  const totalSpent = transactions.reduce((sum: number, t: any) => sum + t.price, 0);
+  const dimeSpent = transactions
+    .filter((t: any) => t.purchasedBy === 'dime')
+    .reduce((sum: number, t: any) => sum + t.price, 0);
+  const ownerSpent = transactions
+    .filter((t: any) => t.purchasedBy === 'owner')
+    .reduce((sum: number, t: any) => sum + t.price, 0);
+
+  res.json({
+    success: true,
+    data: transactions,
+    count: transactions.length,
+    summary: {
+      totalSpent,
+      dimeSpent,
+      ownerSpent
+    }
+  });
+});
+
 // Get dime's scope
 router.get('/scope/:dimeId', (req: Request, res: Response) => {
   const { dimeId } = req.params;

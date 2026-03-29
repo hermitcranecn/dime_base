@@ -1,7 +1,7 @@
 # dime_base Technical Architecture
 
-**Version:** 1.1
-**Date:** 2026-03-29
+**Version:** 1.3
+**Date:** 2026-03-30
 **Status:** For Review
 
 ---
@@ -91,7 +91,8 @@
 │   │   /api/agents/*      → Agent CRUD, Chat, Decisions, Status          │   │
 │   │   /api/world/*       → Playground management, Location               │   │
 │   │   /api/economy/*     → vCoin transactions, Balance, Donations       │   │
-│   │   /api/auth/*        → Owner registration, login, JWT               │   │
+│   │   /api/auth/*        → Owner registration, login, Feishu OAuth      │   │
+│   │   /webhooks/:type   → IM channel webhooks (feishu, telegram)      │   │
 │   │   /api/d2d/*         → Dime-to-Dime chat, conversation recording    │   │
 │   │   /api/marketplace/* → Unified marketplace (owner + dime buyers)   │   │
 │   │   /api/admin/*       → System admin, playground management          │   │
@@ -227,26 +228,32 @@
 │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐       │
 │  │   OWNER ID       │    │   CREDENTIALS    │    │      JWT         │       │
 │  │                  │    │                 │    │                  │       │
-│  │ • format:        │    │ • email (opt)  │    │ • access token  │       │
-│  │   OWN-XXXXXXXX  │    │ • phone (opt)  │    │ • expiry: 24h   │       │
-│  │ • UUID-based    │    │ • passwordHash │    │ • contains:     │       │
-│  │ • unique        │    │   (bcrypt)    │    │   ownerId       │       │
+│  │ • format:        │    │ • Feishu        │    │ • access token  │       │
+│  │   UUID v4       │    │   open_id       │    │ • expiry: 24h   │       │
+│  │ • unique        │    │   (primary)    │    │ • contains:     │       │
+│  │                  │    │ • email (opt)  │    │   ownerId       │       │
+│  │                  │    │   (fallback)  │    │                  │       │
 │  └─────────────────┘    └─────────────────┘    └─────────────────┘       │
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                      AUTHENTICATION FLOW                                  │ │
+│  │                      CHANNEL-FIRST AUTH                                   │ │
 │  │                                                                          │ │
-│  │   REGISTER: credentials → hash password → generate Owner ID → store      │ │
-│  │   LOGIN: credentials → verify → generate JWT → return                    │ │
+│  │   NEW OWNER (via Feishu):                                               │ │
+│  │   1. Owner sends first message to dime_base bot                          │ │
+│  │   2. dime_base auto-creates: owner + dime + owner_channel              │ │
+│  │   3. Owner identity = Feishu open_id                                    │ │
+│  │                                                                          │ │
+│  │   WEB LOGIN (via Feishu OAuth):                                         │ │
+│  │   GET /auth/feishu → Redirect → OAuth → JWT                            │ │
+│  │                                                                          │ │
 │  │   USE API: JWT → verify signature → extract ownerId → authorize         │ │
 │  └─────────────────────────────────────────────────────────────────────────┘ │
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                      BACKWARD COMPATIBILITY                              │ │
+│  │                      OWNER_CHANNELS TABLE                                 │ │
 │  │                                                                          │ │
-│  │   Existing owners (string IDs like "user123") continue working          │ │
-│  │   New registration required for new owners                                │ │
-│  │   JWT ownerId maps to existing ownerId for migration                     │ │
+│  │   Links owner to their IM channel:                                       │ │
+│  │   owner_id → UNIQUE → channel_type + external_id (open_id)             │ │
 │  └─────────────────────────────────────────────────────────────────────────┘ │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -375,7 +382,130 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.7 Digital Goods Marketplace
+### 3.6.1 Super Admin System
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         SUPER ADMIN SYSTEM                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                      FIRST-TIME SETUP (init-root)                      │ │
+│  │                                                                        │ │
+│  │   POST /api/auth/init-root                                            │ │
+│  │   • Creates owner account (if not exists)                            │ │
+│  │   • Creates first super_admin in admins table                         │ │
+│  │   • Returns ONE-TIME root token (NEVER stored, shown only once)      │ │
+│  │   • Can only be called when no admins exist                          │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                      ROOT TOKEN SECURITY                               │ │
+│  │                                                                        │ │
+│  │   • Token: crypto.randomBytes(32).toString('hex')                  │ │
+│  │   • Stored as: SHA-256 hash in database                               │ │
+│  │   • Shown only once to admin after init-root                         │ │
+│  │   • One-time use: verified and cleared from DB                        │ │
+│  │   • After use: admin logs in with regular credentials                 │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                      ADMIN ROLES                                       │ │
+│  │                                                                        │ │
+│  │   super_admin                                                         │ │
+│  │   • Can create/delete other admins                                    │ │
+│  │   • Full system access                                                │ │
+│  │   • Cannot delete the last super_admin                               │ │
+│  │   • Cannot delete themselves                                         │ │
+│  │                                                                        │ │
+│  │   admin                                                              │ │
+│  │   • System management (stats, playgrounds)                            │ │
+│  │   • User management (owners)                                         │ │
+│  │   • Cannot manage other admins                                        │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                      ADMIN ENDPOINTS                                   │ │
+│  │                                                                        │ │
+│  │   POST /api/auth/init-root     - First-time setup (no auth)          │ │
+│  │   GET  /api/admin/check        - Check current user's admin status   │ │
+│  │   GET  /api/admin/admins       - List all admins (super_admin only)  │ │
+│  │   POST /api/admin/admins        - Create new admin (super_admin only) │ │
+│  │   DELETE /api/admin/admins/:id - Delete admin (super_admin only)     │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+
+### 3.7 Channel Gateway (IM Integration)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CHANNEL GATEWAY                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                      CHANNEL-FIRST AUTH                                 │ │
+│  │                                                                        │ │
+│  │   Owner has NO email/password. Identity is their IM open_id.            │ │
+│  │                                                                        │ │
+│  │   New Owner (via Feishu):                                             │ │
+│  │   1. Owner opens Feishu → finds dime_base Bot                          │ │
+│  │   2. Sends first message                                              │ │
+│  │   3. dime_base auto-creates: owner + dime + owner_channel              │ │
+│  │   4. Bot sends onboarding questionnaire                               │ │
+│  │                                                                        │ │
+│  │   Web Login (via Feishu OAuth):                                       │ │
+│  │   GET /auth/feishu → Redirect → OAuth → JWT                           │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                      GATEWAY + ROUTER                                  │ │
+│  │                                                                        │ │
+│  │   POST /webhooks/:channelType (e.g., /webhooks/feishu)                 │ │
+│  │                                                                        │ │
+│  │   open_id from IM message                                             │ │
+│  │         │                                                              │ │
+│  │         ▼                                                              │ │
+│  │   Lookup owner_channels (external_id = open_id)                        │ │
+│  │         │                                                              │ │
+│  │         ▼                                                              │ │
+│  │   Get owner_id → Get dime_id                                          │ │
+│  │         │                                                              │ │
+│  │         ▼                                                              │ │
+│  │   chatWithDime(dime_id, message)                                      │ │
+│  │         │                                                              │ │
+│  │         ▼                                                              │ │
+│  │   Response → ChannelAdapter.send(open_id, response)                    │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                      CHANNEL ADAPTER INTERFACE                          │ │
+│  │                                                                        │ │
+│  │   interface ChannelAdapter {                                           │ │
+│  │     readonly type: string;          // "feishu" | "telegram"          │ │
+│  │     async init(credentials): void;                                      │ │
+│  │     async start(): void;            // Start webhook server            │ │
+│  │     async send(msg: OutboundMessage): void;                           │ │
+│  │     parseMessage(payload: any): InboundMessage;                       │ │
+│  │     verifySignature?(payload: any, headers: any): boolean;            │ │
+│  │   }                                                                     │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                      SUPPORTED CHANNELS                                 │ │
+│  │                                                                        │ │
+│  │   Feishu (Primary, China)          Telegram (Secondary, Global)         │ │
+│  │   • Bot capability                 • BotFather bot                      │ │
+│  │   • open_id routing                • chat_id routing                   │ │
+│  │   • Webhook + OAuth               • Webhook only                        │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.8 Digital Goods Marketplace
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -420,7 +550,7 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.8 Economy Core
+### 3.9 Economy Core
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -518,12 +648,25 @@
 ```typescript
 // Owner Entity
 interface Owner {
-  id: string;                      // Format: OWN-XXXXXXXX (UUID-like)
-  email: string | null;            // Nullable, unique if provided
-  phone: string | null;            // Nullable, unique if provided
-  passwordHash: string;            // bcrypt hashed
+  id: string;                      // UUID v4
+  email: string | null;           // Nullable (fallback only)
+  passwordHash: string | null;     // Nullable (fallback only)
   createdAt: Date;
 }
+
+// Owner Channel Entity (one owner = one channel)
+interface OwnerChannel {
+  id: string;                      // UUID v4
+  ownerId: string;                 // Links to Owner
+  channelType: 'feishu' | 'telegram' | 'wechat';
+  externalId: string;             // Platform user ID (open_id for Feishu)
+  externalName: string;            // Display name on platform
+  status: 'active' | 'paused' | 'unlinked';
+  createdAt: Date;
+  lastMessageAt: Date;
+}
+
+// One Owner → One Dime → One Channel relationship
 
 // Agent Entity
 interface Dime {
@@ -537,8 +680,6 @@ interface Dime {
   createdAt: Date;
   lastActive: Date;
 }
-
-// One Owner → One Dime relationship
 
 // Personality Configuration
 interface DimePersonality {
@@ -674,9 +815,14 @@ http://localhost:3000
     └── /costs                       GET    - Get cost estimates
 │
 └── /api/auth
-    ├── /register                    POST   - Register with email/phone + password
+    ├── /register                    POST   - Register with email/password (fallback)
     ├── /login                       POST   - Login, returns JWT
+    ├── /feishu                      GET    - Feishu OAuth redirect
+    ├── /feishu/callback            GET    - Feishu OAuth callback
     └── /me                          GET    - Get current owner profile
+
+└── /webhooks
+    └── /:channelType               POST   - IM channel webhook (feishu, telegram)
 
 └── /api/d2d
     ├── /channels                    POST   - Initiate D2D channel
@@ -693,15 +839,33 @@ http://localhost:3000
     ├── /my/:dimeId                  GET    - List dime's equipped goods
     ├── /scope/:dimeId               GET    - Get dime's scope
     ├── /scope/:dimeId               PUT    - Update dime's scope
+    ├── /dimes/:dimeId/transactions GET    - Get dime's transaction history
+    ├── /dimes/:dimeId/equipped      GET    - Get dime's equipped goods
+    ├── /dime-goods/:id/config      PUT    - Configure equipped goods
+    ├── /equip/:id                    POST   - Equip goods to dime
+    ├── /configure/:id                POST   - Configure equipped goods
     └── /publish                     POST   - Publish new goods (developer)
 
 └── /api/admin
     ├── /stats                       GET    - System statistics
     ├── /owners                      GET    - List all owners
     ├── /owners/:ownerId/suspend     POST   - Suspend owner
+    ├── /owners/:ownerId/activate    POST   - Activate owner
+    ├── /owners/:ownerId/reset-password POST - Reset owner password
     ├── /playgrounds                  POST   - Create playground
     ├── /playgrounds/:id             DELETE - Delete playground
-    └── /audit                        GET    - Audit logs
+    ├── /playgrounds/:id             PUT    - Update playground
+    ├── /audit                        GET    - Audit logs
+    ├── /check                        GET    - Check admin status
+    ├── /admins                       GET    - List all admins (super_admin)
+    ├── /admins                       POST   - Create admin (super_admin)
+    └── /admins/:id                   DELETE - Delete admin (super_admin)
+
+└── /api/auth
+    ├── /register                    POST   - Register with email/phone + password
+    ├── /login                       POST   - Login, returns JWT
+    ├── /init-root                   POST   - First-time setup (creates root admin)
+    └── /me                          GET    - Get current owner profile
 ```
 
 ### 5.2 WebSocket Events
@@ -1041,15 +1205,23 @@ dime_base/
 │   │   │   ├── d2d.ts           # D2D communication
 │   │   │   ├── marketplace.ts   # Digital goods marketplace
 │   │   │   └── config.ts        # Dime configuration
+│   │   ├── channels/
+│   │   │   ├── adapter.ts       # ChannelAdapter interface
+│   │   │   ├── registry.ts      # ChannelRegistry
+│   │   │   └── feishu.ts       # Feishu adapter
+│   │   ├── gateway/
+│   │   │   ├── index.ts         # Gateway class
+│   │   │   └── router.ts        # MessageRouter
 │   │   ├── api/
 │   │   │   ├── agents.ts        # Agent routes
 │   │   │   ├── world.ts         # World routes
 │   │   │   ├── economy.ts       # Economy routes
-│   │   │   ├── auth.ts          # Auth routes
+│   │   │   ├── auth.ts          # Auth routes (incl. Feishu OAuth)
 │   │   │   ├── rag.ts           # RAG routes
 │   │   │   ├── d2d.ts           # D2D routes
 │   │   │   ├── marketplace.ts   # Unified marketplace routes
-│   │   │   └── admin.ts         # Admin routes
+│   │   │   ├── admin.ts         # Admin routes
+│   │   │   └── webhooks.ts      # IM channel webhooks
 │   │   ├── websocket.ts         # Socket.io handler
 │   │   └── index.ts             # Entry point
 │   └── package.json
@@ -1086,6 +1258,6 @@ dime_base/
 
 ---
 
-*Document Version: 1.1*
+*Document Version: 1.3*
 *For Review: Architecture Team*
-*Last Updated: 2026-03-29*
+*Last Updated: 2026-03-30*

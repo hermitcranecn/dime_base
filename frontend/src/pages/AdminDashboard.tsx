@@ -24,25 +24,127 @@ interface Owner {
   status: string
 }
 
+interface AdminInfo {
+  id: string
+  ownerId: string
+  role: 'super_admin' | 'admin'
+  email: string
+}
+
+type TabType = 'stats' | 'playgrounds' | 'owners' | 'admins'
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [playgrounds, setPlaygrounds] = useState<Playground[]>([])
   const [owners, setOwners] = useState<Owner[]>([])
-  const [activeTab, setActiveTab] = useState<'stats' | 'playgrounds' | 'owners'>('stats')
+  const [admins, setAdmins] = useState<AdminInfo[]>([])
+  const [activeTab, setActiveTab] = useState<TabType>('stats')
   const [loading, setLoading] = useState(true)
   const [token, setToken] = useState('')
   const [showTokenInput, setShowTokenInput] = useState(true)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+
+  // Initialization state
+  const [needsInit, setNeedsInit] = useState(false)
+  const [initEmail, setInitEmail] = useState('')
+  const [initPassword, setInitPassword] = useState('')
+  const [initLoading, setInitLoading] = useState(false)
+  const [initError, setInitError] = useState('')
+  const [rootToken, setRootToken] = useState('')
+  const [showRootToken, setShowRootToken] = useState(false)
 
   useEffect(() => {
-    if (token) {
+    // Check if initialization is needed (no admins exist)
+    checkInitNeeded()
+  }, [])
+
+  useEffect(() => {
+    if (token && !needsInit) {
       fetchData()
     }
-  }, [token])
+  }, [token, needsInit])
+
+  const checkInitNeeded = async () => {
+    try {
+      // Check if any admins exist
+      const res = await fetch(`${API_BASE}/auth/check-admins`)
+      const data = await res.json()
+
+      if (data.adminsExist) {
+        // Admins exist, show login
+        setNeedsInit(false)
+      } else {
+        // No admins, needs initialization
+        setNeedsInit(true)
+      }
+    } catch (err) {
+      // If error, assume init is needed
+      setNeedsInit(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleInitRoot = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setInitError('')
+    setInitLoading(true)
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/init-root`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: initEmail, password: initPassword })
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        setRootToken(data.rootToken)
+        setShowRootToken(true)
+        // After showing token, user should login with their credentials
+      } else {
+        setInitError(data.error || 'Initialization failed')
+      }
+    } catch (err) {
+      setInitError('Network error. Please try again.')
+    } finally {
+      setInitLoading(false)
+    }
+  }
+
+  const handleTokenSubmit = () => {
+    if (token.length > 0) {
+      setShowTokenInput(false)
+    }
+  }
+
+  const handleLogout = () => {
+    setToken('')
+    setShowTokenInput(true)
+    setShowRootToken(false)
+    setRootToken('')
+  }
 
   const fetchData = async () => {
     setLoading(true)
-    await Promise.all([fetchStats(), fetchPlaygrounds(), fetchOwners()])
+    await Promise.all([fetchStats(), fetchPlaygrounds(), fetchOwners(), fetchAdmins()])
+    await checkAdminStatus()
     setLoading(false)
+  }
+
+  const checkAdminStatus = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/check`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.success) {
+        setIsSuperAdmin(data.isSuperAdmin)
+      }
+    } catch (err) {
+      console.error('Failed to check admin status:', err)
+    }
   }
 
   const fetchStats = async () => {
@@ -51,7 +153,7 @@ export default function AdminDashboard() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
-      if (data.success) setStats(data.data)
+      if (data.success) setStats(data.stats)
     } catch (err) {
       console.error('Failed to fetch stats:', err)
     }
@@ -63,7 +165,7 @@ export default function AdminDashboard() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
-      if (data.success) setPlaygrounds(data.data || [])
+      if (data.success) setPlaygrounds(data.playgrounds || [])
     } catch (err) {
       console.error('Failed to fetch playgrounds:', err)
     }
@@ -75,9 +177,21 @@ export default function AdminDashboard() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await res.json()
-      if (data.success) setOwners(data.data || [])
+      if (data.success) setOwners(data.owners || [])
     } catch (err) {
       console.error('Failed to fetch owners:', err)
+    }
+  }
+
+  const fetchAdmins = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/admins`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.success) setAdmins(data.admins || [])
+    } catch (err) {
+      console.error('Failed to fetch admins:', err)
     }
   }
 
@@ -96,7 +210,7 @@ export default function AdminDashboard() {
       })
       const data = await res.json()
       if (data.success) {
-        setPlaygrounds(prev => [...prev, data.data])
+        setPlaygrounds(prev => [...prev, data.playground])
       }
     } catch (err) {
       console.error('Failed to create playground:', err)
@@ -133,6 +247,109 @@ export default function AdminDashboard() {
     }
   }
 
+  const deleteAdmin = async (adminId: string) => {
+    if (!confirm('Are you sure you want to delete this admin?')) return
+
+    try {
+      const res = await fetch(`${API_BASE}/admin/admins/${adminId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.success) {
+        setAdmins(prev => prev.filter(a => a.id !== adminId))
+      } else {
+        alert(data.error || 'Failed to delete admin')
+      }
+    } catch (err) {
+      console.error('Failed to delete admin:', err)
+    }
+  }
+
+  // ============== INITIALIZATION SCREEN ==============
+  if (needsInit) {
+    if (showRootToken) {
+      return (
+        <div className="page admin">
+          <div className="page-header">
+            <h1>Root Admin Created</h1>
+          </div>
+          <div className="glass-panel init-success">
+            <div className="warning-banner">
+              <h3>IMPORTANT: Save Your Root Token</h3>
+              <p>This token will never be shown again. Store it securely.</p>
+            </div>
+            <div className="token-display">
+              <code>{rootToken}</code>
+            </div>
+            <div className="init-success-actions">
+              <button className="btn-primary" onClick={() => {
+                navigator.clipboard.writeText(rootToken)
+                alert('Token copied to clipboard!')
+              }}>
+                Copy to Clipboard
+              </button>
+              <button className="btn-secondary" onClick={handleLogout}>
+                Continue to Login
+              </button>
+            </div>
+            <p className="token-warning">
+              You will need this token to access the admin dashboard until you
+              create additional admin accounts.
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="page admin">
+        <div className="page-header">
+          <h1>Initialize System</h1>
+          <p className="subtitle">Set up the first super admin account</p>
+        </div>
+        <div className="glass-panel init-form">
+          <h2>Create Root Admin</h2>
+          <p>Enter your email and password to create the first super admin.</p>
+          <p className="warning-text">This is a one-time setup. The root token will only be shown once.</p>
+
+          <form onSubmit={handleInitRoot}>
+            <div className="form-group">
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                value={initEmail}
+                onChange={e => setInitEmail(e.target.value)}
+                placeholder="admin@example.com"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                value={initPassword}
+                onChange={e => setInitPassword(e.target.value)}
+                placeholder="Minimum 6 characters"
+                minLength={6}
+                required
+              />
+            </div>
+
+            {initError && <div className="error-message">{initError}</div>}
+
+            <button type="submit" className="btn-primary" disabled={initLoading}>
+              {initLoading ? 'Initializing...' : 'Initialize Root Admin'}
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  // ============== TOKEN INPUT SCREEN ==============
   if (showTokenInput) {
     return (
       <div className="page admin">
@@ -148,21 +365,24 @@ export default function AdminDashboard() {
             placeholder="Bearer token..."
             value={token}
             onChange={e => setToken(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleTokenSubmit()}
           />
-          <button className="btn-primary" onClick={() => setShowTokenInput(false)}>Access Dashboard</button>
+          <button className="btn-primary" onClick={handleTokenSubmit}>Access Dashboard</button>
         </div>
       </div>
     )
   }
 
+  // ============== LOADING ==============
   if (loading) return <div className="page-loading">Loading admin data...</div>
 
+  // ============== ADMIN DASHBOARD ==============
   return (
     <div className="page admin">
       <div className="page-header">
         <h1>Admin Dashboard</h1>
         <p className="subtitle">System administration and management</p>
-        <button className="btn-secondary btn-small" onClick={() => setToken('')}>Logout</button>
+        <button className="btn-secondary btn-small" onClick={handleLogout}>Logout</button>
       </div>
 
       <div className="admin-tabs">
@@ -184,6 +404,14 @@ export default function AdminDashboard() {
         >
           Owners
         </button>
+        {isSuperAdmin && (
+          <button
+            className={`tab ${activeTab === 'admins' ? 'active' : ''}`}
+            onClick={() => setActiveTab('admins')}
+          >
+            Admins
+          </button>
+        )}
       </div>
 
       {activeTab === 'stats' && stats && (
@@ -273,6 +501,41 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'admins' && isSuperAdmin && (
+        <div className="glass-panel">
+          <div className="panel-header">
+            <h2>Admin Management</h2>
+          </div>
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {admins.map(admin => (
+                  <tr key={admin.id}>
+                    <td>{admin.email}</td>
+                    <td><span className={`badge ${admin.role}`}>{admin.role}</span></td>
+                    <td>{new Date(admin.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      <button className="btn-danger btn-small" onClick={() => deleteAdmin(admin.id)}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="help-text">
+            Only super admins can manage other admins. You cannot delete yourself.
+          </p>
         </div>
       )}
     </div>

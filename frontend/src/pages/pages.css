@@ -254,7 +254,8 @@ button:disabled {
 
 /* --- Tabs --- */
 .marketplace-tabs,
-.admin-tabs {
+.admin-tabs,
+.d2d-tabs {
   display: flex;
   gap: var(--space-md);
   margin-bottom: var(--space-xl);
@@ -421,10 +422,27 @@ button:disabled {
    DIME CONFIG PAGE
    ========================================== */
 
+.page.dime-config {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.config-tabs {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: var(--space-md);
+}
+
 .config-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: var(--space-lg);
+}
+
+.config-card {
+  flex-shrink: 0;
 }
 
 .config-card {
@@ -516,7 +534,8 @@ button:disabled {
   justify-content: flex-end;
 }
 
-.channel-list {
+.channel-list,
+.dimes-list {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-md);
@@ -567,6 +586,74 @@ button:disabled {
   font-size: 0.75rem;
   color: var(--text-muted);
   text-transform: capitalize;
+}
+
+/* Dimes List (All Dimes mode) */
+.dime-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.dime-item:hover {
+  background: var(--bg-glass-hover);
+}
+
+.dime-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: white;
+}
+
+.dime-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.dime-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.dime-owner {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.dime-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.status-dot.active {
+  background: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
+}
+
+.status-dot.paused {
+  background: var(--accent-amber);
+}
+
+.status-dot.idle {
+  background: var(--text-muted);
 }
 
 .chat-area {
@@ -1050,9 +1137,236 @@ button:disabled {
   font-size: 0.75rem;
 }
 
+/* Dime Spending Tab */
+.spending-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.spending-summary {
+  padding: var(--space-xl);
+}
+
+.spending-summary h2 {
+  font-family: var(--font-display);
+  color: var(--accent-cyan);
+  margin-bottom: var(--space-sm);
+}
+
+.spending-desc {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xl);
+}
+
+.spending-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.spending-stat {
+  text-align: center;
+  padding: var(--space-lg);
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+}
+
+.spending-stat label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: var(--space-sm);
+}
+
+.spending-stat .stat-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.spending-stat .stat-currency {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-left: var(--space-xs);
+}
+
+.spending-stat.dime .stat-value {
+  color: var(--accent-magenta);
+}
+
+.spending-stat.owner .stat-value {
+  color: var(--accent-amber);
+}
+
+.spending-stat.spending-total .stat-value {
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.spending-filters {
+  display: flex;
+  gap: var(--space-md);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border-default);
+}
+
+.filter-btn {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.filter-btn:hover {
+  border-color: var(--accent-cyan);
+  color: var(--text-primary);
+}
+
+.filter-btn.active {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.transactions-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.transaction-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  border-left: 3px solid transparent;
+}
+
+.transaction-item.dime {
+  border-left-color: var(--accent-magenta);
+}
+
+.transaction-item.owner {
+  border-left-color: var(--accent-amber);
+}
+
+.transaction-icon {
+  font-size: 2.5rem;
+}
+
+.transaction-info {
+  flex: 1;
+}
+
+.transaction-info h3 {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.transaction-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: var(--space-sm);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.transaction-date {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.transaction-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-sm);
+}
+
+.purchaser-badge {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.purchaser-badge.dime {
+  background: rgba(255, 0, 170, 0.1);
+  color: var(--accent-magenta);
+  border: 1px solid rgba(255, 0, 170, 0.3);
+}
+
+.purchaser-badge.owner {
+  background: rgba(255, 170, 0, 0.1);
+  color: var(--accent-amber);
+  border: 1px solid rgba(255, 170, 0, 0.3);
+}
+
+.transaction-price {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--accent-amber);
+}
+
+.transaction-price .currency {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 /* ==========================================
    SKILLS PAGE
    ========================================== */
+
+.skills-info-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
+  background: rgba(0, 240, 255, 0.05);
+  border-color: var(--border-glow);
+}
+
+.skills-info-banner .info-icon {
+  font-size: 2rem;
+}
+
+.skills-info-banner .info-content h3 {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.skills-info-banner .info-content p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.skills-info-banner .info-content a {
+  color: var(--accent-cyan);
+  text-decoration: none;
+}
+
+.skills-info-banner .info-content a:hover {
+  text-decoration: underline;
+}
 
 .skills-section {
   margin-bottom: var(--space-2xl);

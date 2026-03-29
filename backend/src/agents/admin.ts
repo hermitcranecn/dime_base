@@ -458,6 +458,62 @@ export function resetOwnerPassword(ownerId: string, newPassword: string): boolea
   return true;
 }
 
+// ============== ADMIN MANAGEMENT (references auth functions) ==============
+
+import {
+  getAdminByOwnerId as authGetAdminByOwnerId,
+  getAdminById as authGetAdminById,
+  getAllAdmins as authGetAllAdmins,
+  createAdmin as authCreateAdmin,
+  deleteAdmin as authDeleteAdmin,
+  isAdmin as authIsAdmin,
+  isSuperAdmin as authIsSuperAdmin
+} from './auth';
+
+// Re-export admin management functions from auth module
+export {
+  authGetAdminByOwnerId as getAdminByOwnerId,
+  authGetAdminById as getAdminById,
+  authGetAllAdmins as getAllAdmins,
+  authCreateAdmin as createAdmin,
+  authDeleteAdmin as deleteAdmin,
+  authIsAdmin as isAdmin,
+  authIsSuperAdmin as isSuperAdmin
+};
+
+/**
+ * Get all admins with owner email info (for admin management UI)
+ */
+export function getAllAdminsWithOwnerInfo(): any[] {
+  const db = getDb();
+
+  // Ensure auth tables exist
+  try {
+    db.exec("SELECT id FROM owners WHERE id = 'init_check'");
+  } catch (e) {
+    return [];
+  }
+
+  const result = db.exec(`
+    SELECT a.id, a.owner_id, a.role, a.created_at, a.created_by, o.email
+    FROM admins a
+    JOIN owners o ON a.owner_id = o.id
+  `);
+
+  if (result.length === 0) {
+    return [];
+  }
+
+  return result[0].values.map((row: any[]) => ({
+    id: row[0],
+    ownerId: row[1],
+    role: row[2],
+    createdAt: row[3],
+    createdBy: row[4],
+    email: row[5]
+  }));
+}
+
 export default {
   logAdminAction,
   getAuditLogs,
@@ -469,5 +525,13 @@ export default {
   listOwners,
   suspendOwner,
   activateOwner,
-  resetOwnerPassword
+  resetOwnerPassword,
+  getAllAdminsWithOwnerInfo,
+  getAdminByOwnerId: authGetAdminByOwnerId,
+  getAdminById: authGetAdminById,
+  getAllAdmins: authGetAllAdmins,
+  createAdmin: authCreateAdmin,
+  deleteAdmin: authDeleteAdmin,
+  isAdmin: authIsAdmin,
+  isSuperAdmin: authIsSuperAdmin
 };
