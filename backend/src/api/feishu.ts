@@ -40,13 +40,15 @@ router.post('/webhook', async (req: Request, res: Response) => {
   // Event callback (POST)
   if (type === 'event_callback') {
     // Verify signature using official Feishu headers
+    // Reference: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/request-url-configuration-case
     const signature = req.headers['x-lark-signature'] as string;
-    const timestamp = req.headers['x-lark-timestamp'] as string;
-    const nonce = req.body.nonce || '';
+    const timestamp = req.headers['x-lark-request-timestamp'] as string;
+    const nonce = req.headers['x-lark-request-nonce'] as string;
 
-    if (webhook && signature && timestamp) {
+    if (webhook) {
       const bodyStr = JSON.stringify(req.body);
       if (!webhook.verify(signature, timestamp, nonce, bodyStr)) {
+        console.error('Feishu webhook signature verification failed');
         return res.status(403).json({ error: 'Invalid signature' });
       }
     }

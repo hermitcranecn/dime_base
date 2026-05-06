@@ -35,13 +35,19 @@ export class FeishuWebhook {
   /**
    * Verify webhook signature with timestamp validation
    *
-   * Feishu signature algorithm: HMAC-SHA256(timestamp + nonce + body) with encryptKey as key
+   * Feishu official signature algorithm: SHA256(timestamp + nonce + encrypt_key + body)
+   * Reference: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/request-url-configuration-case
    * Timestamp validation prevents replay attacks (reject if > 5 minutes old)
    */
   verify(signature: string, timestamp: string, nonce: string, body: string): boolean {
     // If no encryption key, skip signature verification
     if (!this.encryptKey) {
       return true;
+    }
+
+    if (!signature || !timestamp || !nonce) {
+      console.error('Missing required signature verification fields');
+      return false;
     }
 
     // Validate timestamp to prevent replay attacks
@@ -58,28 +64,26 @@ export class FeishuWebhook {
     const FIVE_MINUTES = 5 * 60;
 
     if (timeDiff > FIVE_MINUTES) {
-      console.error(`Timestamp too old or in future: ${timeDiff}s difference`);
+      console.error(`Signature rejected: timestamp too old (${timeDiff}s difference)`);
       return false;
     }
 
-    // Build signature string: timestamp + nonce + body
-    const signStr = `${timestamp}${nonce}${body}`;
-    const key = Buffer.from(this.encryptKey, 'utf8');
-    const hmac = crypto.createHmac('sha256', key);
-    hmac.update(signStr);
-    const expectedSignature = hmac.digest('base64');
+    // Feishu official algorithm: SHA256(timestamp + nonce + encrypt_key + body)
+    const signStr = `${timestamp}${nonce}${this.encryptKey}${body}`;
+    const hash = crypto.createHash('sha256');
+    hash.update(signStr);
+    const expectedSignature = hash.digest('hex');
 
     // Constant-time comparison to prevent timing attacks
-    if (signature.length !== expectedSignature.length) {
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(signature, 'utf8'),
+        Buffer.from(expectedSignature, 'utf8')
+      );
+    } catch (e) {
+      // Length mismatch or encoding error
       return false;
     }
-
-    let result = 0;
-    for (let i = 0; i < signature.length; i++) {
-      result |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
-    }
-
-    return result === 0;
   }
 
   /**

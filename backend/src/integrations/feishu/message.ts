@@ -181,12 +181,14 @@ export async function processMessage(
 /**
  * Verify webhook signature
  *
- * Feishu signature algorithm: HMAC-SHA256(timestamp + nonce + body) with encryptKey as key
+ * Feishu signature algorithm: SHA256(timestamp + nonce + encrypt_key + body)
+ * Reference: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/request-url-configuration-case
+ *
  * Timestamp validation prevents replay attacks (reject if > 5 minutes old)
  *
  * @param signature - The signature from X-Lark-Signature header
- * @param timestamp - Unix timestamp string from request
- * @param nonce - Random nonce from request
+ * @param timestamp - Unix timestamp string from X-Lark-Request-Timestamp header
+ * @param nonce - Random nonce from X-Lark-Request-Nonce header
  * @param body - Raw request body string
  * @param encryptKey - The encrypt key from Feishu app settings
  * @returns true if signature is valid and timestamp is within 5 minutes
@@ -195,6 +197,7 @@ export function verifySignature(
   signature: string,
   timestamp: string,
   nonce: string,
+  body: string,
   encryptKey?: string
 ): boolean {
   if (!encryptKey) {
@@ -202,7 +205,8 @@ export function verifySignature(
     return true;
   }
 
-  if (!signature || !timestamp) {
+  if (!signature || !timestamp || !nonce) {
+    console.error('Missing required signature verification fields');
     return false;
   }
 
@@ -211,6 +215,7 @@ export function verifySignature(
   const requestTime = parseInt(timestamp, 10);
 
   if (isNaN(requestTime)) {
+    console.error('Invalid timestamp format:', timestamp);
     return false;
   }
 
@@ -218,27 +223,24 @@ export function verifySignature(
   const FIVE_MINUTES = 5 * 60;
 
   if (timeDiff > FIVE_MINUTES) {
+    console.error(`Signature rejected: timestamp too old (${timeDiff}s difference)`);
     return false;
   }
 
-  // Build signature string: timestamp + nonce + body (body is already included in signature calculation context)
-  // Note: For this utility function, we only have access to what's passed
-  // The body should be passed separately if needed for full verification
-  const signStr = `${timestamp}${nonce}`;
-  const key = Buffer.from(encryptKey, 'utf8');
-  const hmac = crypto.createHmac('sha256', key);
-  hmac.update(signStr);
-  const expectedSignature = hmac.digest('base64');
+  // Feishu official algorithm: SHA256(timestamp + nonce + encrypt_key + body)
+  const signStr = `${timestamp}${nonce}${encryptKey}${body}`;
+  const hash = crypto.createHash('sha256');
+  hash.update(signStr);
+  const expectedSignature = hash.digest('hex');
 
   // Constant-time comparison to prevent timing attacks
-  if (signature.length !== expectedSignature.length) {
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'utf8'),
+      Buffer.from(expectedSignature, 'utf8')
+    );
+  } catch (e) {
+    // Length mismatch or encoding error
     return false;
   }
-
-  let result = 0;
-  for (let i = 0; i < signature.length; i++) {
-    result |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
-  }
-
-  return result === 0;
 }
