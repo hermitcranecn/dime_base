@@ -33,22 +33,53 @@ export class FeishuWebhook {
   }
 
   /**
-   * Verify webhook signature
+   * Verify webhook signature with timestamp validation
+   *
+   * Feishu signature algorithm: HMAC-SHA256(timestamp + nonce + body) with encryptKey as key
+   * Timestamp validation prevents replay attacks (reject if > 5 minutes old)
    */
   verify(signature: string, timestamp: string, nonce: string, body: string): boolean {
-    // If no encryption key, just check verification token
+    // If no encryption key, skip signature verification
     if (!this.encryptKey) {
-      return true; // Simplified for development
+      return true;
     }
 
-    // Build signature string
+    // Validate timestamp to prevent replay attacks
+    // Feishu requests should be within 5 minutes
+    const now = Math.floor(Date.now() / 1000);
+    const requestTime = parseInt(timestamp, 10);
+
+    if (isNaN(requestTime)) {
+      console.error('Invalid timestamp format:', timestamp);
+      return false;
+    }
+
+    const timeDiff = Math.abs(now - requestTime);
+    const FIVE_MINUTES = 5 * 60;
+
+    if (timeDiff > FIVE_MINUTES) {
+      console.error(`Timestamp too old or in future: ${timeDiff}s difference`);
+      return false;
+    }
+
+    // Build signature string: timestamp + nonce + body
     const signStr = `${timestamp}${nonce}${body}`;
     const key = Buffer.from(this.encryptKey, 'utf8');
     const hmac = crypto.createHmac('sha256', key);
     hmac.update(signStr);
     const expectedSignature = hmac.digest('base64');
 
-    return signature === expectedSignature;
+    // Constant-time comparison to prevent timing attacks
+    if (signature.length !== expectedSignature.length) {
+      return false;
+    }
+
+    let result = 0;
+    for (let i = 0; i < signature.length; i++) {
+      result |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
+    }
+
+    return result === 0;
   }
 
   /**

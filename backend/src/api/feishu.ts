@@ -39,9 +39,9 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
   // Event callback (POST)
   if (type === 'event_callback') {
-    // Verify signature if needed
-    const signature = req.headers['x-feishu-signature'] as string;
-    const timestamp = req.headers['x-feishu-timestamp'] as string;
+    // Verify signature using official Feishu headers
+    const signature = req.headers['x-lark-signature'] as string;
+    const timestamp = req.headers['x-lark-timestamp'] as string;
     const nonce = req.body.nonce || '';
 
     if (webhook && signature && timestamp) {
