@@ -54,6 +54,7 @@ import d2dRoutes from './api/d2d';
 import configRoutes from './api/config';
 import adminRoutes from './api/admin';
 import marketplaceRoutes from './api/marketplace';
+import feishuRoutes from './api/feishu';
 
 app.use('/api/agents', agentRoutes);
 app.use('/api/world', worldRoutes);
@@ -64,6 +65,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/feishu', feishuRoutes);
 
 app.get('/', (req, res) => {
   res.json({
@@ -79,7 +81,8 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       config: '/api/config',
       admin: '/api/admin',
-      marketplace: '/api/marketplace'
+      marketplace: '/api/marketplace',
+      feishu: '/api/feishu'
     }
   });
 });

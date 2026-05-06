@@ -181,6 +181,15 @@ export async function initDatabase(): Promise<void> {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS feishu_links (
+      id TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL,
+      feishu_open_id TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    )
+  `);
+
   // Seed default playground
   const existing = db.exec("SELECT id FROM playgrounds WHERE id = 'main_plaza'");
   if (existing.length === 0) {
