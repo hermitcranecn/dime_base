@@ -6,3 +6,6 @@ backend/data/
 backend/dist/
 frontend/.env
 sessions/
+
+# Claude Code local settings (may contain secrets)
+.claude/
