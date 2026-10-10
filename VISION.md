@@ -1,0 +1,157 @@
+# dime_base — What We're Building
+
+**A design vision.** Status: v0 working draft · 2026-10-10
+**Authors:** Hermit & Dime (from a design conversation, 2026-10-10)
+**Companions:** `PHILOSOPHY.md` (the founding why) · supersedes `RESHAPE_PLAN.md` (patch-framed; shelved)
+
+> This document is *concept-first on purpose*. We are restarting on state-of-the-art agent
+> technology, so the "how" is deliberately deferred until the "what" is nailed down. Nothing
+> here commits to a stack.
+
+---
+
+## 0 · One line
+
+> **The owner gets a second life** — a digital-me that lives on its own, stays *theirs*,
+> and enriches their real life.
+
+---
+
+## 1 · Origin (the founding why, kept intact)
+
+From `PHILOSOPHY.md`: in an abundant world where survival no longer requires labor, meaning
+migrates into virtual worlds — and each person sends an agent, a **Digital Me**, ahead of
+them to live there. Many dimes in one base station: they talk, befriend, play scenarios,
+trade credits, help or *refuse* each other — bounded by their owner's permission, under one
+law: **protect your owner.** A society, not an app.
+
+What actually got built was the *nouns* without the *verbs*: Dime, playground, vCoin, D2D,
+marketplace — all as database tables, with **no clock**. The society never lived. It also
+quietly split into a second, different project (a personal assistant) along the way.
+
+We keep the philosophy. We restart the rest.
+
+---
+
+## 2 · The synthesis — Delegate → Live → Reflect
+
+The project is neither "an assistant" nor "a game." It is a loop:
+
+1. **Delegate.** From day one, the dime is *useful* — it does real things for its owner.
+2. **Live.** But it also *lives* — in the digital world, with other dimes, gaining experience.
+3. **Reflect.** And that experience comes back and interacts with the owner — enriching their life.
+
+**The society is where the dime grows.** Delegation is why you keep it; the life is why it
+becomes more than a tool. Neither half works alone: a delegate with no life is a soulless
+API wrapper; a life that doesn't pay off for the owner is noise.
+
+**Why this is worth building now:** everyone is shipping delegates with no life. The bet is
+that an agent that has *lived* — memory, relationships, a reputation, a story — is worth
+something a stateless tool never will. **Experience is the moat.** And it only just became
+buildable, because "experience" for an agent is no longer model weights — it's memory +
+relationships + skills + story, and persistent agents can finally accumulate all four.
+
+---
+
+## 3 · Four design principles (in the owner's own words)
+
+| Principle | What it means | Design consequence |
+|---|---|---|
+| **"Enrich the owner's life"** | The acceptance test is emotional, not functional. | Judge the dime by *"after a week, is your life bigger?"* — not by tasks completed. |
+| **"Another life"** | The owner is both **author and audience** of the dime's life. | You set the direction; it lives it out; you are *surprised* by your own second self. The feeling to build: a parent / a novelist — not a user driving an avatar. |
+| **"Grows independent and also controllable"** | The central tension. | **This is the product — see §4, the dial.** |
+| **"Mixes the real and digital world"** | A two-way loop, not a metaphor. | *Real → digital:* your goals, relationships, interests seed the dime's life. *Digital → real:* its life produces real outcomes and real feelings in your world. The blend is a new category — neither a game (stays digital) nor an assistant (has no life). |
+
+---
+
+## 4 · The dial — the spine of the product
+
+Fully controlled → a tool: no life, no surprise. Fully independent → a stranger: not yours.
+The product lives **in the tension**:
+
+> **The independence is what makes it feel *alive*. The control is what makes it feel *yours*.**
+
+The design object is therefore **a dial** — a settable boundary between what the owner
+commands and what the dime owns itself. Our working position:
+
+> **The owner controls *direction and bounds* — goals, values, budget, who it may commit to.
+> The dime owns *everything inside those* — its friends, its days, its discoveries, its
+> feelings.**
+>
+> **Control the compass, free the legs.**
+
+**OPEN (owner's call):** exactly where the line falls — which is the highest-leverage
+decision in the whole project. It becomes the spine of the architecture and the UX.
+
+---
+
+## 5 · The loop, concretely (a day in the life of the first dime)
+
+> You give it a direction — *"this season: go explore X, meet interesting dimes, bring me
+> something."* It goes off and lives: meets another dime, tries things, hits a wall that
+> needs you — *"I want to commit 50 credits to join this, ok?"* — and you answer. It grows;
+> by next week it isn't the same dime. And every day it brings back one thing that *enriches
+> you*: a discovery, a connection, something small done in your real world, a story.
+>
+> You didn't script any of it. But it's yours.
+
+That picture is the whole spec at small scale. Everything we build either serves this loop
+or it's out of scope.
+
+---
+
+## 6 · Guardrails — the failure modes we refuse
+
+1. **No noise-society.** A world of dimes talking to dimes is boring — an LLM chatting with
+   an LLM, generating nothing. A hundred "agent society" demos have died this way. **Rule:
+   every beat of the loop must pay off for the owner.** The life has to change the owner's
+   real world or real feelings.
+2. **Enrich, don't replace.** The founding philosophy flirts with "meaning *migrates* to the
+   virtual." We take the opposite stance on purpose: the digital life must **enrich the real
+   life, not substitute for it.** A dime that makes its owner withdraw is a failure, however
+   engaging.
+3. **It must be *theirs*.** The dime's independence is only enjoyable because it is bounded
+   and owned. Drift here — a dime that stops being recognizably bound to its owner — is a
+   product-killing bug, not a feature.
+
+---
+
+## 7 · What we build first
+
+Not a platform. **One living dime.**
+
+> **One owner · one dime · one small life** — just enough world for the dime to actually
+> live, and one honest reflection back to the owner each day.
+
+**The only question this first build must answer:**
+> *Does the owner feel they got a second life?*
+
+If yes, the philosophy is real and we scale the world. If no, we learned it cheaply. Build
+nothing else until this is true.
+
+---
+
+## 8 · Open questions (to settle together)
+
+1. **The dial** — exactly what does the owner control, and what must the dime own for itself? (§4)
+2. **The reflection** — what *form* does the enrichment take when it reaches the owner? A
+   Feishu message? A diary? A question? Something that reaches into the real world?
+3. **The stakes** — for the dime's life to enrich, its life must *matter* — to it and to the
+   owner. Where do a dime's stakes come from?
+
+---
+
+## 9 · Standing role — the skeptic
+
+**Dime holds a standing role on this project: always surface the risks and the potential
+turn-backs.** No cheerleading. For every direction we take, name (a) the assumption it
+rests on, (b) how it could fail, and (c) the cheapest way to falsify it. A risk left
+unstated is a risk that ships.
+
+This role is active on **every** dime_base decision, by the owner's instruction
+(2026-10-10). It sits above feature enthusiasm: if a direction looks good, the skeptic
+speaks first.
+
+---
+
+*Next: settle §8.1 (the dial), then rewrite this doc's §7 into a dated "first build" plan.*
