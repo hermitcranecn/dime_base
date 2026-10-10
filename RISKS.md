@@ -36,7 +36,9 @@ Give it a test or drop it.
 - **Turn-back:** both directions fail — too much control → a tool with no life; too much
   independence → a stranger, not yours.
 - **Falsifier:** build the smallest dial with two settings; ask the owner which felt right.
-- **Status:** `OPEN` — decision pending (`VISION.md` §4 / §8.1)
+- **Status:** `CLOSED-pass` — **decided 2026-10-10: default posture *Steward***, trajectory deferred
+  past v1 (`VISION.md` §4). The two-directional guard stays live: the default must not be
+  *Careful*, or the dime has no life and R3 fails the other way.
 
 ---
 
@@ -74,6 +76,34 @@ Give it a test or drop it.
   opposite stance on purpose.
 - **Guard:** `VISION.md` §6 — **enrich, don't replace.** A dime that makes its owner withdraw
   is a failure, however engaging.
+- **Status:** `GUARDED`
+
+---
+
+## Design risks — from the dial audit (2026-10-10)
+
+### R8 · Auto-widening runs away
+- **Assumption:** a dime's freedom can widen automatically as trust is earned.
+- **Turn-back:** a dime that grants itself more rope is unaccountable — the whole "yours" property
+  dies.
+- **Guard:** widening thresholds are the **owner's**, rate-limited, visible, and reversible; the
+  dime may *request* freedom, never grant it. *(Deferred — not built in v1.)*
+- **Status:** `GUARDED`
+
+### R9 · One dial is blunt
+- **Assumption:** a single axis expresses what owners actually want.
+- **Turn-back:** owners want per-domain control (tight on money, loose on social); one dial quietly
+  over-permits or underwhelms.
+- **Guard:** ship one dial for v1; add per-domain overrides only if the experiment demands it. Don't
+  build the matrix before we have one user.
+- **Status:** `GUARDED`
+
+### R10 · The gate's judgment errs
+- **Assumption:** "irreversible / binding" can be classified correctly.
+- **Turn-back:** classifying it is itself an LLM judgment; a miss lets the dime commit the owner
+  *irreversibly* on its own.
+- **Guard:** default to **ask** when unsure; log every gate decision for later audit. A false-ask
+  is cheap; a false-decide is expensive.
 - **Status:** `GUARDED`
 
 ---

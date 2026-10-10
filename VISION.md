@@ -80,8 +80,28 @@ commands and what the dime owns itself. Our working position:
 >
 > **Control the compass, free the legs.**
 
-**OPEN (owner's call):** exactly where the line falls — which is the highest-leverage
-decision in the whole project. It becomes the spine of the architecture and the UX.
+**Resolved (2026-10-10): the dial is *freedom within a fixed frame*.**
+
+Three things the owner never gives up — they are what make the dime *yours*:
+
+- **The compass** — direction, the season's goals. Owner sets it. Always.
+- **The bounds** — the hard envelope: budget, who it may commit to, which domains. Owner sets it. Always.
+- **The law** — never harm or expose the owner, never breach a bound. Fixed, below everything. *"Protect your owner," made real.*
+
+Inside that frame, one axis frees the dime's own life:
+
+| Posture | Behaviour |
+|---|---|
+| **Careful** | the dime proposes; the owner approves most actions. Low surprise, low life. |
+| **Steward** ← **default (v1)** | the dime runs its own routine life; escalates when a choice is irreversible, binds the owner, or leaves the envelope. |
+| **Free** | the dime decides broadly inside the bounds, reports afterward; asks only for the genuinely big. |
+
+Two design rules:
+
+1. **Freedom has a trajectory, not just a position** — a new dime starts tight and its freedom widens as trust is *earned by track record*. Independence grows **because** it stayed controllable. The dime may *request* more rope; it may never grant itself — and the owner can pull it back any time. *(Deferred past v1.)*
+2. **Escalation triggers on *kind*, not amount** — the dime spends freely inside budget but asks before *promising anything on the owner's behalf*, because irreversibility and binding commitments are where a proxy gets dangerous. And the escalation *is the drama* — the moment the dime asks is where the "second life" feels most real. A good question is a feature, not friction.
+
+**v1 pins the posture at Steward and skips the trajectory** — the widening is not built until the loop works.
 
 ---
 
@@ -133,7 +153,7 @@ nothing else until this is true.
 
 ## 8 · Open questions (to settle together)
 
-1. **The dial** — exactly what does the owner control, and what must the dime own for itself? (§4)
+1. ~~**The dial**~~ — **RESOLVED 2026-10-10: default posture *Steward*** (see §4). Freedom has a trajectory, deferred past v1.
 2. **The reflection** — what *form* does the enrichment take when it reaches the owner? A
    Feishu message? A diary? A question? Something that reaches into the real world?
 3. **The stakes** — for the dime's life to enrich, its life must *matter* — to it and to the
