@@ -108,6 +108,27 @@ Give it a test or drop it.
 
 ---
 
+## Design risks — from the reflection audit (2026-10-10)
+
+### R11 · The reflection decays into a log
+- **Assumption:** a daily narrated message keeps its signal.
+- **Turn-back:** it becomes a status log / spam — the concrete early form of R2 — and the owner
+  stops opening it.
+- **Falsifier:** track read/reply; compare day-10 against day-1. If it reads like a log, it's dying.
+- **Guard:** hard cap one a day; a message only sends if it carries a *surprise*, a *real-world
+  touch*, or an *escalation* — otherwise nothing goes out.
+- **Status:** `GUARDED`
+
+### R12 · Curation drift
+- **Assumption:** the reflection faithfully conveys a life that is actually running independently.
+- **Turn-back:** the dime curates itself into a flattering, narrow story; the owner loses the sense
+  of a *real* life happening without them, and trust erodes when reality differs.
+- **Guard:** the reflection is generated **from the actual event log**, never free-written; the
+  owner can always open the raw log behind it.
+- **Status:** `GUARDED`
+
+---
+
 ## Watch-list (not yet a risk — track it)
 
 - **Trust/safety before real-world action.** A dime acting on the owner's behalf can err;

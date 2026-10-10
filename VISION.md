@@ -118,6 +118,26 @@ Two design rules:
 That picture is the whole spec at small scale. Everything we build either serves this loop
 or it's out of scope.
 
+### 5.1 · The reflection (v1) — the Reflect beat, defined
+
+How the dime's life reaches the owner. v1 is deliberately small and opinionated:
+
+> **One message a day, in Feishu, in the dime's own voice — "your dime's day."**
+
+Rules:
+
+- **A story + a hook, not a log.** One thing the dime did *on its own* (proof it *lived*), and one
+  thing that serves the owner (proof it's *useful*).
+- **It reaches into the owner's real world at least sometimes** — a discovery, a link, something
+  done. Without this the life is only entertainment, and entertainment decays (R2).
+- **One a day, capped.** Scarcity is signal; a feed is noise.
+- **The escalation rides inside it** — the question that needs the owner (the Steward gate, §4)
+  arrives where they already are. This is the drama.
+- **It reads like the dime, not a system.** In this product, voice *is* the thing (art. 2).
+
+The owner's window is, for v1, **only** this message plus the ability to answer it. No dashboard
+required (art. 8). Deferred: a diary, a feed, in-world co-presence.
+
 ---
 
 ## 6 · Guardrails — the failure modes we refuse
@@ -154,8 +174,7 @@ nothing else until this is true.
 ## 8 · Open questions (to settle together)
 
 1. ~~**The dial**~~ — **RESOLVED 2026-10-10: default posture *Steward*** (see §4). Freedom has a trajectory, deferred past v1.
-2. **The reflection** — what *form* does the enrichment take when it reaches the owner? A
-   Feishu message? A diary? A question? Something that reaches into the real world?
+2. ~~**The reflection**~~ — **RESOLVED 2026-10-10: one Feishu message a day, in the dime's voice** (see §5.1). Richer surfaces (diary, feed, co-presence) deferred.
 3. **The stakes** — for the dime's life to enrich, its life must *matter* — to it and to the
    owner. Where do a dime's stakes come from?
 
@@ -174,4 +193,4 @@ speaks first.
 
 ---
 
-*Next: settle §8.1 (the dial), then rewrite this doc's §7 into a dated "first build" plan.*
+*Next: settle §8.3 (a dime's stakes), then rewrite §7 into a dated "first build" plan. (§8.1 the dial and §8.2 the reflection are resolved.)*
