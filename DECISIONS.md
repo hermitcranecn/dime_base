@@ -11,6 +11,10 @@ lightly, watch the revisit-trigger) · `SUPERSEDED` (replaced by a later entry) 
 > these as our best current guesses, not settled fact. Each carries the trigger that would make us
 > revisit it.
 
+**Project status: `PAUSED` — 2026-10-10.** Paused by the owner: the vision (and even the one-week
+experiment) is *too big to make real* right now. Everything below is preserved for a return. See the
+**Resume note** at the foot of this file.
+
 ---
 
 ## D-0 · Design concept-first; defer the stack
@@ -72,3 +76,18 @@ lightly, watch the revisit-trigger) · `SUPERSEDED` (replaced by a later entry) 
 ---
 
 *To change course, add a new entry that supersedes an old one — never edit history.*
+
+---
+
+## Resume note (on pausing — 2026-10-10)
+
+When we come back, the smallest honest re-entry is **not** to build the experiment. It is to test the
+*experience* without making anything real:
+
+> **The hand-played probe.** For a few days, the dime is played *by hand* — the agent we already have
+> drafts the daily reflection; no autonomous tick, no world, no code. The owner reads real reflections
+> and answers the §0 question: *do I feel I got a second life?*
+
+If the loop enriches him even hand-played, the bet is worth building. If it doesn't, no amount of
+engineering would have saved it. This tests **R1** — the load-bearing risk — at near-zero cost. The
+build was only ever a proxy for exactly this feeling.
