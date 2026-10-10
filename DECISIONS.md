@@ -63,4 +63,12 @@ lightly, watch the revisit-trigger) · `SUPERSEDED` (replaced by a later entry) 
 
 ---
 
+## D-8 · Experiment stack — reuse the existing agent runtime
+**Status:** `PROVISIONAL` · 2026-10-10
+- **Decision:** run the v1 experiment on the agent runtime we already operate; reuse memory, tools, scheduling, and the channel. It is **not** a patch to the legacy dime_base; the product's own stack is a separate, later build (D-1).
+- **Assumes:** the fastest path to a *living* dime is to reuse infrastructure we already run.
+- **Revisit if:** the runtime's constraints block the loop — or the owner wants the experiment on the fresh product stack from day one.
+
+---
+
 *To change course, add a new entry that supersedes an old one — never edit history.*

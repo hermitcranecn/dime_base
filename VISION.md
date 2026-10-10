@@ -191,6 +191,8 @@ Not a platform. **One living dime.**
 If yes, the philosophy is real and we scale the world. If no, we learned it cheaply. Build
 nothing else until this is true.
 
+→ **Dated plan:** `BUILD_PLAN_v1.md` — the one-week experiment (2026-10-10).
+
 ---
 
 ## 8 · Design questions — settled 2026-10-10
