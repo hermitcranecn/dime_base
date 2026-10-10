@@ -138,6 +138,28 @@ Rules:
 The owner's window is, for v1, **only** this message plus the ability to answer it. No dashboard
 required (art. 8). Deferred: a diary, a feed, in-world co-presence.
 
+### 5.2 · The stakes (v1) — what the life is *for*
+
+A life with nothing at stake produces no drama, so the reflection has nothing to report and R2
+wins by default. For v1:
+
+> **The stake is the owner's real goal.** The dime is a proxy on one real thing the owner cares
+> about — a question to answer, a small errand it can actually advance — and its life *is* the
+> pursuit of that, in the world and with other dimes. The daily line: *did it move the needle,
+> and what did it hit along the way?*
+
+Why this and not credits/reputation first:
+
+- It makes the real/digital **mix load-bearing from day one** (§2 Reflect; the anti-escapism guard R7).
+- It answers *"why does the owner care?"* — the goal is **theirs**.
+- It supplies genuine stakes *(the dime can fail)* with no invented economy and no crowd — dodging R5.
+
+The tuning knob: the goal must be **open-ended, real, and pursuable in small daily steps** —
+something the owner would enjoy watching pursued even if it is never fully "done" — and pursued
+with the dime's **own judgment**, not as a checklist. Too small → a task (R4 drift). Too big →
+flailing, and the reflection becomes failure reports. Credits and reputation layer on *later*, as
+the world gains inhabitants.
+
 ---
 
 ## 6 · Guardrails — the failure modes we refuse
@@ -171,12 +193,15 @@ nothing else until this is true.
 
 ---
 
-## 8 · Open questions (to settle together)
+## 8 · Design questions — settled 2026-10-10
 
 1. ~~**The dial**~~ — **RESOLVED 2026-10-10: default posture *Steward*** (see §4). Freedom has a trajectory, deferred past v1.
 2. ~~**The reflection**~~ — **RESOLVED 2026-10-10: one Feishu message a day, in the dime's voice** (see §5.1). Richer surfaces (diary, feed, co-presence) deferred.
-3. **The stakes** — for the dime's life to enrich, its life must *matter* — to it and to the
-   owner. Where do a dime's stakes come from?
+3. ~~**The stakes**~~ — **RESOLVED 2026-10-10: the owner's real goal** (see §5.2).
+
+> All three settled 2026-10-10. See `DECISIONS.md` for the full decision log **and the
+> revisit-triggers** — today's direction is provisional and held lightly. The one question still
+> open is the **audience** (personal sandbox / invited circle / public product — R6).
 
 ---
 
@@ -193,4 +218,4 @@ speaks first.
 
 ---
 
-*Next: settle §8.3 (a dime's stakes), then rewrite §7 into a dated "first build" plan. (§8.1 the dial and §8.2 the reflection are resolved.)*
+*Next: decide the audience (R6) and run the one-week experiment (§7). All of today's decisions are logged, with revisit-triggers, in `DECISIONS.md`.*
